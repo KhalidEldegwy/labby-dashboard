@@ -1,0 +1,1156 @@
+<title>Labby Driver Signups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+  /* Layout: dark navy header · filter bar · 8 KPIs · trend+funnel · channel+status donuts · channel-perf + vehicle · locations + agents · daily/weekly/monthly summary */
+  :root {
+    --bg: #f6f3fb;
+    --surface: #ffffff;
+    --surface-2: #faf8fd;
+    --surface-3: #f1ebfa;
+    --border: #e8e1f4;
+    --border-strong: #c9b8e5;
+    --fg: #1a1429;
+    --fg-soft: #3b2e5a;
+    --muted: #6b5e7f;
+    --faint: #9b8fb0;
+    --header-bg: #581189;
+    --header-fg: #ffffff;
+    --header-muted: #d8c7f0;
+    --brand: #581189;
+    --brand-soft: #7c3aed;
+    --brand-tint: #ede9fe;
+    --accent: #581189;
+    --hot: #dc2626;
+    --warm: #f59e0b;
+    --cold: #3b82f6;
+    --success: #10b981;
+    --purple: #8b5cf6;
+    --teal: #14b8a6;
+    --rose: #f43f5e;
+    --rejected: #78716c;
+    --hot-tint: #fee2e2;
+    --warm-tint: #fef3c7;
+    --cold-tint: #dbeafe;
+    --success-tint: #d1fae5;
+    --shadow-sm: 0 1px 2px rgba(15,30,61,0.04);
+    --shadow-md: 0 1px 3px rgba(15,30,61,0.06), 0 1px 2px rgba(15,30,61,0.04);
+    --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #120a1f;
+      --surface: #1c1230;
+      --surface-2: #251940;
+      --surface-3: #2f2051;
+      --border: #332149;
+      --border-strong: #4a3268;
+      --fg: #efe9f8;
+      --fg-soft: #d7cce9;
+      --muted: #9b8db5;
+      --faint: #6a5f82;
+      --header-bg: #1a0633;
+      --header-fg: #ffffff;
+      --header-muted: #b9a7d4;
+      --brand: #c084fc;
+      --brand-soft: #a78bfa;
+      --brand-tint: rgba(192,132,252,0.16);
+      --hot: #f87171;
+      --warm: #fbbf24;
+      --success: #34d399;
+      --hot-tint: rgba(248,113,113,0.14);
+      --warm-tint: rgba(251,191,36,0.14);
+      --cold-tint: rgba(96,165,250,0.14);
+      --success-tint: rgba(52,211,153,0.14);
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+      --shadow-md: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#120a1f; --surface:#1c1230; --surface-2:#251940; --surface-3:#2f2051;
+    --border:#332149; --border-strong:#4a3268; --fg:#efe9f8; --fg-soft:#d7cce9;
+    --muted:#9b8db5; --faint:#6a5f82; --header-bg:#1a0633; --header-fg:#fff; --header-muted:#b9a7d4;
+    --brand:#c084fc; --brand-soft:#a78bfa; --brand-tint:rgba(192,132,252,0.16);
+    --hot:#f87171; --warm:#fbbf24; --success:#34d399;
+    --hot-tint:rgba(248,113,113,0.14); --warm-tint:rgba(251,191,36,0.14);
+    --cold-tint:rgba(96,165,250,0.14); --success-tint:rgba(52,211,153,0.14);
+    color-scheme: dark;
+  }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-sans); font-size: 13px; line-height: 1.4; -webkit-font-smoothing: antialiased; }
+
+  /* HEADER */
+  .appheader { background: var(--header-bg); color: var(--header-fg); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  .appheader .brand { display: flex; align-items: center; gap: 14px; }
+  .appheader .logo { width: 40px; height: 40px; background: #fff; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 4px; box-shadow: 0 2px 8px rgba(88,17,137,0.25); }
+  .appheader .logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .appheader h1 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+  .appheader .divider { width: 1px; height: 24px; background: rgba(255,255,255,0.2); }
+  .appheader .sub { font-size: 12px; color: var(--header-muted); }
+  .appheader-right { display: flex; align-items: center; gap: 16px; font-size: 12px; color: var(--header-muted); flex-wrap: wrap; }
+  .appheader-right .live { display: inline-flex; align-items: center; gap: 6px; }
+  .appheader-right .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .theme-tog { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); color: var(--header-fg); padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-family: var(--font-sans); }
+  .theme-tog:hover { background: rgba(255,255,255,0.14); }
+
+  .wrap { padding: 14px 20px 28px; max-width: 1700px; margin: 0 auto; }
+  @media (max-width: 700px) { .wrap { padding: 12px; } .appheader { padding: 14px 16px; } }
+
+  /* FILTER BAR */
+  .filterbar { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: grid; grid-template-columns: repeat(5, 1fr) auto; gap: 8px; margin-bottom: 10px; box-shadow: var(--shadow-sm); align-items: end; }
+  @media (max-width: 1100px) { .filterbar { grid-template-columns: repeat(3, 1fr); } .filterbar .reset-wrap { grid-column: span 3; } }
+  @media (max-width: 560px) { .filterbar { grid-template-columns: repeat(2, 1fr); } .filterbar .reset-wrap { grid-column: span 2; } }
+  .fitem .flabel { font-size: 10px; color: var(--muted); font-weight: 500; margin-bottom: 4px; letter-spacing: 0.03em; }
+  .fitem select { width: 100%; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-size: 12px; color: var(--fg-soft); font-family: var(--font-sans); appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; padding-right: 26px; cursor: pointer; }
+  .fitem select:focus { outline: 2px solid var(--brand-soft); outline-offset: -1px; }
+  .reset-btn { background: var(--brand); color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 11px; font-weight: 500; cursor: pointer; font-family: var(--font-sans); white-space: nowrap; display: flex; align-items: center; gap: 6px; height: 32px; }
+  .reset-btn:hover { background: var(--brand-soft); }
+
+  /* KPI */
+  .kpis { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; margin-bottom: 10px; }
+  @media (max-width: 1400px) { .kpis { grid-template-columns: repeat(4, 1fr); } }
+  @media (max-width: 700px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 13px 14px 12px; min-width: 0; position: relative; box-shadow: var(--shadow-sm); overflow: hidden; }
+  .kpi::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--brand-soft); opacity: 0.5; }
+  .kpi.success::before { background: var(--success); }
+  .kpi.hot::before { background: var(--hot); }
+  .kpi.warm::before { background: var(--warm); }
+  .kpi.purple::before { background: var(--purple); }
+  .kpi.rose::before { background: var(--rose); }
+  .kpi .klabel { font-size: 10px; font-weight: 500; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.03em; display: flex; align-items: center; gap: 6px; text-transform: uppercase; }
+  .kpi .kicon { font-size: 12px; }
+  .kpi .kvalue { font-family: var(--font-mono); font-size: 22px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.1; color: var(--fg); }
+  .kpi .kdelta { font-family: var(--font-mono); font-size: 10px; margin-top: 5px; display: flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
+  .kpi .kdelta.up { color: var(--success); }
+  .kpi .kdelta.down { color: var(--hot); }
+  .kpi .kdelta.flat { color: var(--muted); }
+
+  /* Panels & rows */
+  .row { display: grid; gap: 10px; margin-bottom: 10px; min-width: 0; }
+  .row.rA { grid-template-columns: 1.5fr 1fr; }
+  .row.rB { grid-template-columns: 1fr 1fr; }
+  .row.rC { grid-template-columns: 1.3fr 1fr; }
+  .row.rD { grid-template-columns: 1fr 1.3fr; }
+  @media (max-width: 1100px) { .row.rA, .row.rB, .row.rC, .row.rD { grid-template-columns: 1fr; } }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; min-width: 0; box-shadow: var(--shadow-sm); }
+  .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .panel-head h2 { margin: 0; font-size: 14px; font-weight: 600; color: var(--fg); letter-spacing: -0.01em; }
+  .panel-head .pmeta { font-family: var(--font-mono); color: var(--faint); font-size: 11px; }
+  .tabs { display: inline-flex; gap: 2px; background: var(--surface-2); padding: 2px; border-radius: 6px; }
+  .tab { padding: 4px 10px; border-radius: 4px; font-size: 11px; color: var(--muted); cursor: pointer; font-weight: 500; border: none; background: transparent; font-family: var(--font-sans); }
+  .tab.on { background: var(--surface); color: var(--fg); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+  /* Trend chart */
+  .chart-area { position: relative; height: 240px; width: 100%; }
+  .chart-area svg { width: 100%; height: 100%; display: block; }
+  .chart-legend { display: flex; gap: 14px; margin-top: 10px; font-size: 11px; color: var(--muted); flex-wrap: wrap; }
+  .chart-legend .lg { display: inline-flex; align-items: center; gap: 6px; }
+  .chart-legend .sw { width: 10px; height: 2px; border-radius: 1px; }
+
+  /* Funnel */
+  .funnel { display: flex; flex-direction: column; gap: 8px; }
+  .funnel-row { display: grid; grid-template-columns: 110px 1fr 60px 55px; gap: 10px; align-items: center; font-size: 12px; }
+  .funnel-row .name { color: var(--fg-soft); font-weight: 500; }
+  .funnel-row .bar-wrap { background: var(--surface-2); border-radius: 4px; height: 22px; overflow: hidden; position: relative; }
+  .funnel-row .bar { height: 100%; background: var(--brand-soft); border-radius: 3px; transition: width 0.3s ease; }
+  .funnel-row .count { font-family: var(--font-mono); text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .funnel-row .pct { font-family: var(--font-mono); text-align: right; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .funnel-row.step1 .bar { background: var(--brand-soft); }
+  .funnel-row.step2 .bar { background: #60a5fa; }
+  .funnel-row.step3 .bar { background: var(--teal); }
+  .funnel-row.step4 .bar { background: var(--warm); }
+  .funnel-row.step5 .bar { background: #c084fc; }
+  .funnel-row.ok .bar { background: var(--success); } .funnel-row.ok .count { color: var(--success); }
+  .funnel-row.rej .bar { background: var(--rose); } .funnel-row.rej .count { color: var(--rose); }
+
+  /* Donut */
+  .donut-wrap { display: flex; align-items: center; gap: 18px; }
+  @media (max-width: 500px) { .donut-wrap { flex-direction: column; align-items: stretch; } }
+  .donut { position: relative; flex-shrink: 0; width: 140px; height: 140px; }
+  .donut svg { width: 100%; height: 100%; }
+  .donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .donut-center .dv { font-family: var(--font-mono); font-size: 20px; font-weight: 600; color: var(--fg); }
+  .donut-center .dl { font-size: 9px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px; }
+  .donut-legend { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; font-size: 11px; max-height: 180px; overflow-y: auto; }
+  .donut-legend .lrow { display: grid; grid-template-columns: 10px 1fr auto auto; gap: 8px; align-items: center; }
+  .donut-legend .sw { width: 10px; height: 10px; border-radius: 2px; }
+  .donut-legend .nm { color: var(--fg-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .donut-legend .ct { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 500; }
+  .donut-legend .pc { font-family: var(--font-mono); color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; min-width: 42px; text-align: right; }
+
+  /* Horizontal bar list */
+  .hbars { display: flex; flex-direction: column; gap: 8px; }
+  .hbar-row { display: grid; grid-template-columns: 150px 1fr 60px 50px; gap: 10px; align-items: center; font-size: 12px; }
+  @media (max-width: 500px) { .hbar-row { grid-template-columns: 100px 1fr 55px; } .hbar-row .pct { display: none; } }
+  .hbar-row .name { color: var(--fg-soft); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hbar-row .bar-wrap { background: var(--surface-2); border-radius: 4px; height: 20px; overflow: hidden; }
+  .hbar-row .bar { height: 100%; background: var(--brand-soft); border-radius: 3px; transition: width 0.3s ease; }
+  .hbar-row .count { font-family: var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .hbar-row .pct { font-family: var(--font-mono); text-align: right; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* Tables */
+  .tbl-wrap { overflow-x: auto; }
+  .tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .tbl th { text-align: left; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 10px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--surface-2); }
+  .tbl th.num { text-align: right; }
+  .tbl td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  .tbl td.name { font-weight: 500; color: var(--fg-soft); }
+  .tbl td.num { font-family: var(--font-mono); text-align: right; }
+  .tbl tr:hover td { background: var(--surface-2); }
+  .tbl tr.total td { font-weight: 700; background: var(--surface-3); border-bottom: none; }
+  .conv-high { background: var(--success-tint); color: var(--success); padding: 2px 7px; border-radius: 10px; font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
+  .conv-mid { background: var(--warm-tint); color: var(--warm); padding: 2px 7px; border-radius: 10px; font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
+  .conv-low { background: var(--hot-tint); color: var(--hot); padding: 2px 7px; border-radius: 10px; font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
+
+  /* Highlighted feature panel for Last 5 Days */
+  .panel-feature { border: 1px solid var(--brand-soft); box-shadow: 0 4px 16px rgba(88,17,137,0.14), var(--shadow-sm); position: relative; }
+  .panel-feature::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--brand), var(--brand-soft)); border-radius: 10px 10px 0 0; }
+  .panel-feature .panel-head h2 { color: var(--brand); }
+  :root[data-theme="dark"] .panel-feature .panel-head h2,
+  :root:not([data-theme="light"]) .panel-feature .panel-head h2 { color: var(--brand); }
+
+  /* Progress / growth table */
+  .growth-tbl { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+  .growth-tbl th { text-align: left; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+  .growth-tbl th.num { text-align: center; }
+  .growth-tbl td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .growth-tbl td.name { font-weight: 600; color: var(--fg); }
+  .growth-tbl tr:hover td { background: var(--surface-2); }
+  .growth-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .growth-cell .pct { font-size: 15px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+  .growth-cell .nums { font-size: 10px; color: var(--muted); font-weight: 500; }
+  .growth-cell.up .pct { color: var(--success); }
+  .growth-cell.down .pct { color: var(--hot); }
+  .growth-cell.flat .pct { color: var(--muted); }
+  .growth-cell .arrow { font-size: 11px; }
+  .growth-tbl tr.total td { background: var(--surface-3); font-weight: 700; border-bottom: none; }
+  .growth-tbl tr.total td.name { color: var(--brand); }
+
+  /* Date-window scroller */
+  .date-nav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .date-nav .nav-btn { background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; cursor: pointer; font-size: 11px; color: var(--fg-soft); font-family: var(--font-sans); display: inline-flex; align-items: center; gap: 4px; font-weight: 500; }
+  .date-nav .nav-btn:hover:not(:disabled) { background: var(--brand-tint); color: var(--brand); border-color: var(--brand-soft); }
+  .date-nav .nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .date-nav .range-label { font-family: var(--font-mono); font-size: 11px; color: var(--fg-soft); font-weight: 600; padding: 0 6px; min-width: 150px; text-align: center; }
+  .date-nav .latest-link { background: var(--brand); color: #fff; border: none; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-size: 11px; font-weight: 500; font-family: var(--font-sans); }
+  .date-nav .latest-link:hover { background: var(--brand-soft); }
+
+  /* Loading + empty */
+  .loading { padding: 40px; text-align: center; color: var(--muted); }
+  .empty { padding: 24px; text-align: center; color: var(--faint); font-size: 11px; font-style: italic; }
+  .err { padding: 14px; background: var(--hot-tint); color: var(--hot); border-radius: 8px; margin: 20px; font-size: 12px; }
+
+  /* Footer note */
+  .foot { margin-top: 20px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: 11px; color: var(--muted); line-height: 1.5; }
+  .foot strong { color: var(--brand); font-weight: 600; }
+</style>
+
+<header class="appheader">
+  <div class="brand">
+    <div class="logo"><img src="data:image/png;base64,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" alt="Labby"></div>
+    <h1>Labby</h1>
+    <div class="divider"></div>
+    <div class="sub">Driver Signups Dashboard</div>
+  </div>
+  <div class="appheader-right">
+    <span class="live"><span class="dot"></span>Live from sheet</span>
+    <span id="last-updated">Last Updated · —</span>
+    <button class="theme-tog" id="theme-tog">🌓 Theme</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div id="root">
+    <div class="loading">Loading dashboard…</div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   LABBY DRIVER SIGNUPS DASHBOARD
+   ============================================================
+   Modular architecture — spec sec. 18:
+     DATA_SOURCE : where records come from (swap to Apps Script
+                   web-app URL to go live from your Google Sheet).
+     processData : normalize / clean (spec sec. 13).
+     computeAll  : derive every KPI / chart / table (spec sec. 14).
+     renderAll   : paint the DOM from computed values.
+     Filters are a single state object; any change re-computes
+     everything from the raw dataset.
+   ============================================================ */
+
+/* --- 1. DATA SOURCE --------------------------------------- */
+// LIVE from Volt's Google Sheet via CSV export (no Apps Script, no CORS issues)
+// Sheet must be shared "Anyone with the link" (verified)
+const DATA_SOURCE = 'https://docs.google.com/spreadsheets/d/1zS5bJmdo5o-rJPgREuKVEyi6tRaPXMQMNWDXns-RTgw/gviz/tq?tqx=out:csv&sheet=Data';
+
+/* --- 2. STATE --------------------------------------------- */
+const state = {
+  raw: [],
+  filtered: [],
+  refDate: null,          // "today" reference, max(created) in data
+  filters: {
+    dateRange: 'all',
+    channel: 'all',
+    status: 'all',
+    vehicle: 'all',
+    location: 'all'
+  },
+  trendGranularity: 'daily',    // daily | weekly | monthly
+  summaryGranularity: 'daily',
+  last5Offset: 0                // 0 = latest window, 1 = previous 5 days, 2 = 10 days back, ...
+};
+
+/* --- 3. STATUS GROUPS -------------------------------------- */
+/* Business rules confirmed by Volt (Labby Syria): */
+const APPROVED = ['ASCreated', 'ASDataExtracted', 'NotEngaged', 'ASAccepted'];
+const REJECTED = ['ASRejected'];
+const PENDING  = ['ASInitial', 'ASCorrection', 'ASVerification'];
+/* Not currently mapped to any KPI (awaiting business rule):
+   ASReview, Closed, ASAbandoned — total ~291 records. */
+
+/* --- 4. HELPERS -------------------------------------------- */
+const fmt = n => n == null ? '—' : n.toLocaleString('en-US');
+const pct = (n, d) => d > 0 ? (n/d*100) : 0;
+const fmtPct = v => v.toFixed(v < 10 ? 2 : 1) + '%';
+const fmtDelta = v => (v >= 0 ? '▲ +' : '▼ ') + v.toFixed(1) + '%';
+
+function startOfDay(d) { const x = new Date(d); x.setHours(0,0,0,0); return x; }
+function startOfWeek(d) { const x = startOfDay(d); x.setDate(x.getDate() - x.getDay()); return x; }
+function startOfMonth(d) { const x = startOfDay(d); x.setDate(1); return x; }
+function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function addMonths(d, n) { const x = new Date(d); x.setMonth(x.getMonth() + n); return x; }
+function daysBetween(a, b) { return (startOfDay(b) - startOfDay(a)) / 86400000; }
+function fmtDate(d) { return d.toISOString().slice(0,10); }
+function fmtDateShort(d) { return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+
+/* --- 5. DATA LOAD + CLEAN ---------------------------------- */
+/* Fetches CSV from a published Google Sheet.
+   Google's docs.google.com endpoints send proper CORS headers,
+   so plain fetch() works from any origin (artifact, GitHub Pages, …). */
+async function loadData() {
+  const res = await fetch(DATA_SOURCE);
+  if (!res.ok) throw new Error('Failed to load CSV: HTTP ' + res.status);
+  const text = await res.text();
+  const rows = parseCSV(text);
+  if (rows.length < 2) return [];
+
+  const headers = rows[0];
+  const col = name => headers.indexOf(name);
+
+  const parseMissing = note => {
+    if (!note) return [];
+    const m = String(note).match(/missing:\s*(.+)/);
+    return m ? m[1].split(',').map(s => s.trim()).filter(Boolean) : [];
+  };
+
+  const parseDate = s => {
+    if (!s) return null;
+    let d = new Date(s);
+    if (!isNaN(d.getTime())) return d;
+    // Fallback: "YYYY-MM-DD HH:MM:SS" → ISO-ish
+    d = new Date(String(s).replace(' ', 'T'));
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  return rows.slice(1)
+    .filter(r => r[col('applicant_id')])
+    .map(r => ({
+      id:       Number(r[col('applicant_id')]) || 0,
+      created:  parseDate(r[col('created_at')]),
+      updated:  parseDate(r[col('updated_at')]),
+      status:   r[col('status_label')] || '',
+      vehicle:  r[col('vehicle_type')] || 'unknown',
+      location: Number(r[col('location')]) || 0,
+      channel:  r[col('channel')] || 'Unknown',
+      category: r[col('category')] || null,
+      priority: r[col('priority')] || null,
+      agent:    r[col('assigned_agent_name')] || null,
+      missing:  parseMissing(r[col('followup_note')])
+    }))
+    .filter(r => r.created && !isNaN(r.created.getTime()));
+}
+
+/* RFC-4180-ish CSV parser that handles quoted fields with commas,
+   escaped quotes, CRLF line endings, and empty rows. */
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"' && text[i + 1] === '"') { field += '"'; i++; }
+      else if (c === '"') inQuotes = false;
+      else field += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (field !== '' || row.length > 0) { row.push(field); rows.push(row); row = []; field = ''; }
+        if (c === '\r' && text[i + 1] === '\n') i++;
+      } else field += c;
+    }
+  }
+  if (field !== '' || row.length > 0) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+/* --- 6. FILTER APPLY --------------------------------------- */
+function applyDateFilter(records, range, ref) {
+  if (range === 'all') return records;
+  let from;
+  if (range === '7d') from = addDays(ref, -7);
+  else if (range === '30d') from = addDays(ref, -30);
+  else if (range === '90d') from = addDays(ref, -90);
+  else if (range === 'month') from = startOfMonth(ref);
+  else if (range === 'last_month') {
+    const start = startOfMonth(addMonths(ref, -1));
+    const end = startOfMonth(ref);
+    return records.filter(r => r.created >= start && r.created < end);
+  }
+  return records.filter(r => r.created >= from && r.created <= addDays(ref,1));
+}
+
+function applyFilters(data) {
+  let r = data;
+  const f = state.filters;
+  r = applyDateFilter(r, f.dateRange, state.refDate);
+  if (f.channel !== 'all') r = r.filter(x => x.channel === f.channel);
+  if (f.status !== 'all') r = r.filter(x => x.status === f.status);
+  if (f.vehicle !== 'all') r = r.filter(x => x.vehicle === f.vehicle);
+  if (f.location !== 'all') r = r.filter(x => String(x.location) === f.location);
+  return r;
+}
+
+/* --- 7. KPI CALCULATIONS (spec sec. 14) --------------------- */
+function computeKPIs(data, ref) {
+  const total = data.length;
+  const dStart = startOfDay(ref);
+  const dPrev = addDays(dStart, -1);
+  const wStart = startOfWeek(ref);
+  const wPrev = addDays(wStart, -7);
+  const mStart = startOfMonth(ref);
+  const mPrev = startOfMonth(addMonths(ref, -1));
+
+  const inRange = (r, from, to) => r.created >= from && r.created < to;
+
+  const today = data.filter(r => inRange(r, dStart, addDays(dStart,1))).length;
+  const yest = data.filter(r => inRange(r, dPrev, dStart)).length;
+  const week = data.filter(r => inRange(r, wStart, addDays(wStart,7))).length;
+  const lastWeek = data.filter(r => inRange(r, wPrev, wStart)).length;
+  const month = data.filter(r => inRange(r, mStart, addMonths(mStart,1))).length;
+  const lastMonth = data.filter(r => inRange(r, mPrev, mStart)).length;
+
+  const approved = data.filter(r => APPROVED.includes(r.status)).length;
+  const rejected = data.filter(r => REJECTED.includes(r.status)).length;
+  const pending  = data.filter(r => PENDING.includes(r.status)).length;
+
+  // Conversion rate = Approved / Total × 100
+  const convRate = pct(approved, total);
+  // Previous-period conversion rate (vs last month)
+  const prevData = data.filter(r => inRange(r, mPrev, mStart));
+  const prevApproved = prevData.filter(r => APPROVED.includes(r.status)).length;
+  const prevConv = pct(prevApproved, prevData.length);
+  const convDelta = convRate - prevConv;
+
+  const change = (now, prev) => prev === 0 ? (now > 0 ? 100 : 0) : (now - prev) / prev * 100;
+
+  return {
+    total,
+    today, todayDelta: change(today, yest),
+    week, weekDelta: change(week, lastWeek),
+    month, monthDelta: change(month, lastMonth),
+    approved, approvedPct: pct(approved, total),
+    rejected, rejectedPct: pct(rejected, total),
+    pending, pendingPct: pct(pending, total),
+    convRate, convDelta
+  };
+}
+
+/* --- 8. FUNNEL (spec sec. 5B — adapted to real statuses) --- */
+function computeFunnel(data) {
+  // Natural funnel order based on actual data pipeline:
+  // ASCreated → ASInitial → ASDataExtracted → ASReview → ASVerification → ASAccepted
+  // "Total" = everyone, "Accepted/Closed" = terminal success states
+  const total = data.length;
+  const stages = [
+    { key: 'Total Signups', c: total },
+    { key: 'ASCreated', c: data.filter(r=>r.status==='ASCreated').length },
+    { key: 'ASInitial', c: data.filter(r=>r.status==='ASInitial').length },
+    { key: 'ASDataExtracted', c: data.filter(r=>r.status==='ASDataExtracted').length },
+    { key: 'ASReview', c: data.filter(r=>r.status==='ASReview').length },
+    { key: 'ASVerification', c: data.filter(r=>r.status==='ASVerification').length },
+    { key: 'Accepted', c: data.filter(r=>r.status==='ASAccepted').length }
+  ];
+  const rejected = data.filter(r=>r.status==='ASRejected').length;
+  const max = Math.max(...stages.map(s => s.c), 1);
+  return stages.map((s,i) => ({
+    name: s.key,
+    count: s.c,
+    pctOfTotal: pct(s.c, total),
+    width: s.c / max * 100,
+    stepClass: i === 0 ? 'step1' : i === stages.length-1 ? 'ok' : `step${Math.min(i,5)}`
+  })).concat([{
+    name: 'Rejected',
+    count: rejected,
+    pctOfTotal: pct(rejected, total),
+    width: rejected / max * 100,
+    stepClass: 'rej'
+  }]);
+}
+
+/* --- 9. CATEGORICAL BREAKDOWNS ----------------------------- */
+function groupBy(data, key) {
+  const map = new Map();
+  for (const r of data) {
+    const k = key(r);
+    map.set(k, (map.get(k)||0) + 1);
+  }
+  return [...map.entries()].sort((a,b) => b[1]-a[1]);
+}
+
+/* --- 10. TREND (daily / weekly / monthly) ------------------ */
+function computeTrend(data, granularity, ref) {
+  const bucket = r => {
+    const d = r.created;
+    if (granularity === 'daily') return fmtDate(startOfDay(d));
+    if (granularity === 'weekly') return fmtDate(startOfWeek(d));
+    return fmtDate(startOfMonth(d));
+  };
+  const map = new Map();
+  for (const r of data) {
+    const k = bucket(r);
+    map.set(k, (map.get(k)||0) + 1);
+  }
+  // Fill empty buckets within window
+  const points = [...map.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+  if (!points.length) return { points: [], ma: [], prev: [] };
+
+  // Trim to last 30 points
+  const sliced = points.slice(-30);
+
+  // 7-day moving average over daily; otherwise simple 3-period MA
+  const window = granularity === 'daily' ? 7 : 3;
+  const vals = sliced.map(p => p[1]);
+  const ma = vals.map((_, i) => {
+    const from = Math.max(0, i - window + 1);
+    const win = vals.slice(from, i+1);
+    return win.reduce((a,b)=>a+b,0) / win.length;
+  });
+
+  return {
+    points: sliced,
+    ma,
+    max: Math.max(...vals, ...ma, 1)
+  };
+}
+
+/* --- 11. CHANNEL PERFORMANCE TABLE ------------------------- */
+function computeChannelPerf(data) {
+  const channels = [...new Set(data.map(r=>r.channel))];
+  const bucket = sub => ({
+    approved: sub.filter(r=>APPROVED.includes(r.status)).length,
+    rejected: sub.filter(r=>REJECTED.includes(r.status)).length,
+    pending:  sub.filter(r=>PENDING.includes(r.status)).length
+  });
+  const rows = channels.map(ch => {
+    const sub = data.filter(r=>r.channel===ch);
+    const b = bucket(sub);
+    return { channel: ch, total: sub.length, ...b, conv: pct(b.approved, sub.length) };
+  }).sort((a,b)=>b.total-a.total);
+  const tb = bucket(data);
+  const total = { channel: 'Total', total: data.length, ...tb, conv: pct(tb.approved, data.length) };
+  return { rows, total };
+}
+
+/* --- 12. LAST 5 DAYS – SIGNUP SOURCE PERFORMANCE ----------- */
+/* Rows = latest 5 calendar days (ending at state.refDate — rolls
+   forward automatically as new data arrives).
+   Cols = DSU (Digital Signup) | Promoter | Total Signups.
+   Plus a totals row across the 5 days. */
+function computeLast5Days(data, ref, offset = 0) {
+  // offset=0 → latest 5 days ending at ref; offset=1 → the 5 days before that; etc.
+  const anchor = addDays(ref, -offset * 5);
+  const days = [];
+  for (let i = 0; i < 5; i++) days.push(startOfDay(addDays(anchor, -i)));
+  const rows = days.map(d => {
+    const next = addDays(d, 1);
+    const sub = data.filter(r => r.created >= d && r.created < next);
+    const dsu = sub.filter(r => r.channel === 'Digital Signup').length;
+    const promoter = sub.filter(r => r.channel === 'Promoter').length;
+    return { date: d, dsu, promoter, total: dsu + promoter };
+  });
+  const totals = rows.reduce((a, r) => ({
+    dsu: a.dsu + r.dsu, promoter: a.promoter + r.promoter, total: a.total + r.total
+  }), { dsu: 0, promoter: 0, total: 0 });
+  return { rows, totals };
+}
+
+/* Max offset we can go back to without going before the earliest signup. */
+function maxLast5Offset() {
+  if (!state.raw.length) return 0;
+  const earliest = state.raw.reduce((m, r) => r.created < m ? r.created : m, state.refDate);
+  const totalDays = daysBetween(earliest, state.refDate);
+  return Math.max(0, Math.floor(totalDays / 5));
+}
+
+/* --- 12b. GROWTH TABLE (DOD · WOW · MOM) ------------------- */
+/* Signups progress by channel — three rows (DSU / Promoter / Total)
+   across three period-over-period comparisons:
+     DOD = today vs yesterday
+     WOW = this week vs last week
+     MOM = this month vs last month                             */
+function computeGrowth(data, ref) {
+  const inRange = (r, from, to) => r.created >= from && r.created < to;
+  const dStart = startOfDay(ref);
+  const dPrev  = addDays(dStart, -1);
+  const wStart = startOfWeek(ref);
+  const wPrev  = addDays(wStart, -7);
+  const mStart = startOfMonth(ref);
+  const mPrev  = startOfMonth(addMonths(ref, -1));
+
+  const slice = (from, to) => data.filter(r => inRange(r, from, to));
+  const bucket = sub => ({
+    dsu:      sub.filter(r => r.channel === 'Digital Signup').length,
+    promoter: sub.filter(r => r.channel === 'Promoter').length,
+    total:    sub.length
+  });
+
+  // To-date pacing — compare the same number of elapsed days.
+  // WOW = WTD vs last week's same days.  MOM = MTD vs last month's same MTD.
+  const todayEnd = addDays(dStart, 1);                                    // exclusive end of today
+  const dayOfWeek  = Math.floor(daysBetween(wStart, dStart));             // 0 (Sun) … 6 (Sat)
+  const lastWTDEnd = addDays(wPrev, dayOfWeek + 1);                       // same day of last week + 1
+  const dayOfMonth = ref.getDate();                                       // 1 … 31
+  const daysInLastMonth = new Date(mPrev.getFullYear(), mPrev.getMonth()+1, 0).getDate();
+  const effectiveDay = Math.min(dayOfMonth, daysInLastMonth);             // cap: no "Feb 30"
+  const lastMTDEnd = new Date(mPrev.getFullYear(), mPrev.getMonth(), effectiveDay + 1);
+
+  const windows = {
+    today:     bucket(slice(dStart, todayEnd)),
+    yest:      bucket(slice(dPrev,  dStart)),
+    thisWeek:  bucket(slice(wStart, todayEnd)),       // WTD
+    lastWeek:  bucket(slice(wPrev,  lastWTDEnd)),     // last week · same days
+    thisMonth: bucket(slice(mStart, todayEnd)),       // MTD
+    lastMonth: bucket(slice(mPrev,  lastMTDEnd))      // last month · same MTD
+  };
+
+  const rows = [
+    { key: 'dsu',      label: 'DSU (Digital Signup)' },
+    { key: 'promoter', label: 'Promoter' },
+    { key: 'total',    label: 'Total Signups' }
+  ];
+
+  return rows.map(r => ({
+    label: r.label, isPct: false,
+    dod: { curr: windows.today[r.key],     prev: windows.yest[r.key] },
+    wow: { curr: windows.thisWeek[r.key],  prev: windows.lastWeek[r.key] },
+    mom: { curr: windows.thisMonth[r.key], prev: windows.lastMonth[r.key] }
+  }));
+}
+
+/* --- 13. SUMMARY TABLE ------------------------------------- */
+function computeSummary(data, granularity) {
+  const bucket = r => {
+    const d = r.created;
+    if (granularity === 'daily') return fmtDate(startOfDay(d));
+    if (granularity === 'weekly') return fmtDate(startOfWeek(d));
+    return fmtDate(startOfMonth(d));
+  };
+  const map = new Map();
+  for (const r of data) {
+    const k = bucket(r);
+    if (!map.has(k)) map.set(k, []);
+    map.get(k).push(r);
+  }
+  const rows = [...map.entries()].sort((a,b)=>b[0].localeCompare(a[0])).slice(0, 10)
+    .map(([k, sub]) => {
+      const approved = sub.filter(r=>APPROVED.includes(r.status)).length;
+      const rejected = sub.filter(r=>REJECTED.includes(r.status)).length;
+      const pending  = sub.filter(r=>PENDING.includes(r.status)).length;
+      return { period: k, total: sub.length, approved, rejected, pending, conv: pct(approved, sub.length) };
+    });
+  return rows;
+}
+
+/* --- 14. CHART DRAWERS (SVG) ------------------------------- */
+function drawTrend(trend) {
+  const W = 760, H = 240;
+  const PAD = { l: 44, r: 20, t: 20, b: 32 };
+  const innerW = W - PAD.l - PAD.r;
+  const innerH = H - PAD.t - PAD.b;
+  const { points, ma, max } = trend;
+  if (!points.length) return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><text x="${W/2}" y="${H/2}" text-anchor="middle" fill="var(--faint)" font-size="12">No data in range</text></svg>`;
+
+  const xStep = points.length > 1 ? innerW / (points.length - 1) : 0;
+  const yScale = v => PAD.t + innerH - (v / max) * innerH;
+  const xAt = i => PAD.l + i * xStep;
+
+  // Grid
+  const gridLines = [0, 0.25, 0.5, 0.75, 1].map(f => {
+    const y = PAD.t + innerH * (1-f);
+    const v = Math.round(max * f);
+    return `<line x1="${PAD.l}" y1="${y}" x2="${W-PAD.r}" y2="${y}" stroke="var(--border)" stroke-width="0.5"/>
+            <text x="${PAD.l-6}" y="${y+3}" text-anchor="end" fill="var(--faint)" font-size="9" font-family="var(--font-mono)">${v}</text>`;
+  }).join('');
+
+  // Daily line
+  const dailyPts = points.map((p,i) => `${xAt(i)},${yScale(p[1])}`).join(' ');
+  const dailyLine = `<polyline points="${dailyPts}" fill="none" stroke="var(--brand-soft)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  const dailyDots = points.map((p,i) => `<circle cx="${xAt(i)}" cy="${yScale(p[1])}" r="2.5" fill="var(--brand-soft)"/>`).join('');
+
+  // MA line
+  const maPts = ma.map((v,i) => `${xAt(i)},${yScale(v)}`).join(' ');
+  const maLine = `<polyline points="${maPts}" fill="none" stroke="var(--warm)" stroke-width="2" stroke-dasharray="4,3" stroke-linejoin="round"/>`;
+
+  // X labels (every N)
+  const labelN = Math.ceil(points.length / 6);
+  const xLabels = points.map((p,i) => {
+    if (i % labelN !== 0 && i !== points.length - 1) return '';
+    const d = new Date(p[0] + 'T00:00:00');
+    return `<text x="${xAt(i)}" y="${H - 10}" text-anchor="middle" fill="var(--faint)" font-size="9" font-family="var(--font-mono)">${fmtDateShort(d)}</text>`;
+  }).join('');
+
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${gridLines}${dailyLine}${dailyDots}${maLine}${xLabels}</svg>`;
+}
+
+function drawDonut(data, palette) {
+  const total = data.reduce((s,d) => s + d.value, 0);
+  if (total === 0) return { svg: '<svg viewBox="0 0 42 42"></svg>', legend: [] };
+  let offset = 25;
+  const circles = data.map((d,i) => {
+    const share = d.value / total * 100;
+    const dash = share.toFixed(2) + ' ' + (100 - share).toFixed(2);
+    const color = palette[i % palette.length];
+    const c = `<circle cx="21" cy="21" r="15.915" fill="none" stroke="${color}" stroke-width="6" stroke-dasharray="${dash}" stroke-dashoffset="${(-offset+25).toFixed(2)}" transform="rotate(-90 21 21)"/>`;
+    offset += share;
+    return c;
+  }).join('');
+  const svg = `<svg viewBox="0 0 42 42">
+    <circle cx="21" cy="21" r="15.915" fill="none" stroke="var(--surface-2)" stroke-width="6"/>
+    ${circles}
+  </svg>`;
+  const legend = data.map((d,i) => ({
+    name: d.name, value: d.value,
+    pct: pct(d.value, total),
+    color: palette[i % palette.length]
+  }));
+  return { svg, legend, total };
+}
+
+/* --- 15. RENDERERS ----------------------------------------- */
+function render() {
+  state.filtered = applyFilters(state.raw);
+  const data = state.filtered;
+  const kpi = computeKPIs(data, state.refDate);
+
+  // 1 — KPI
+  const kpiHtml = `
+    <div class="kpi">
+      <div class="klabel"><span class="kicon">👥</span>Total Signups</div>
+      <div class="kvalue">${fmt(kpi.total)}</div>
+      <div class="kdelta flat">all applicants</div>
+    </div>
+    <div class="kpi">
+      <div class="klabel"><span class="kicon">📆</span>Today</div>
+      <div class="kvalue">${fmt(kpi.today)}</div>
+      <div class="kdelta ${kpi.todayDelta>=0?'up':'down'}">${fmtDelta(kpi.todayDelta)} vs yest.</div>
+    </div>
+    <div class="kpi">
+      <div class="klabel"><span class="kicon">📊</span>This Week</div>
+      <div class="kvalue">${fmt(kpi.week)}</div>
+      <div class="kdelta ${kpi.weekDelta>=0?'up':'down'}">${fmtDelta(kpi.weekDelta)} vs last</div>
+    </div>
+    <div class="kpi">
+      <div class="klabel"><span class="kicon">🗓</span>This Month</div>
+      <div class="kvalue">${fmt(kpi.month)}</div>
+      <div class="kdelta ${kpi.monthDelta>=0?'up':'down'}">${fmtDelta(kpi.monthDelta)} vs last</div>
+    </div>
+    <div class="kpi success">
+      <div class="klabel"><span class="kicon">✓</span>Approved</div>
+      <div class="kvalue">${fmt(kpi.approved)}</div>
+      <div class="kdelta flat">${fmtPct(kpi.approvedPct)} of total</div>
+    </div>
+    <div class="kpi rose">
+      <div class="klabel"><span class="kicon">✗</span>Rejected</div>
+      <div class="kvalue">${fmt(kpi.rejected)}</div>
+      <div class="kdelta flat">${fmtPct(kpi.rejectedPct)} of total</div>
+    </div>
+    <div class="kpi warm">
+      <div class="klabel"><span class="kicon">⏳</span>Pending</div>
+      <div class="kvalue">${fmt(kpi.pending)}</div>
+      <div class="kdelta flat">${fmtPct(kpi.pendingPct)} of total</div>
+    </div>
+    <div class="kpi purple">
+      <div class="klabel"><span class="kicon">📈</span>Conversion Rate</div>
+      <div class="kvalue">${fmtPct(kpi.convRate)}</div>
+      <div class="kdelta ${kpi.convDelta>=0?'up':'down'}">${fmtDelta(kpi.convDelta)} vs last mo.</div>
+    </div>
+  `;
+  $('kpis').innerHTML = kpiHtml;
+
+  // 2 — Trend
+  const trend = computeTrend(data, state.trendGranularity, state.refDate);
+  $('trend-svg').innerHTML = drawTrend(trend);
+
+  // 3 — Funnel
+  const funnel = computeFunnel(data);
+  $('funnel').innerHTML = funnel.map(f => `
+    <div class="funnel-row ${f.stepClass}">
+      <span class="name">${f.name}</span>
+      <div class="bar-wrap"><div class="bar" style="width:${f.width.toFixed(1)}%"></div></div>
+      <span class="count">${fmt(f.count)}</span>
+      <span class="pct">${fmtPct(f.pctOfTotal)}</span>
+    </div>
+  `).join('');
+
+  // 4 — Channel donut
+  const chanData = groupBy(data, r=>r.channel).map(([n,v])=>({name:n, value:v}));
+  const chanPal = ['#581189', '#7c3aed', '#14b8a6', '#f59e0b'];
+  const chanDonut = drawDonut(chanData, chanPal);
+  $('chan-donut').innerHTML = chanDonut.svg;
+  $('chan-center').innerHTML = `<div class="dv">${fmt(chanDonut.total)}</div><div class="dl">Total</div>`;
+  $('chan-legend').innerHTML = chanDonut.legend.map(l => `
+    <div class="lrow"><span class="sw" style="background:${l.color}"></span><span class="nm">${l.name}</span><span class="ct">${fmt(l.value)}</span><span class="pc">${fmtPct(l.pct)}</span></div>
+  `).join('');
+
+  // 5 — Status donut
+  const statusPal = ['#581189', '#f43f5e', '#f59e0b', '#14b8a6', '#7c3aed', '#06b6d4', '#ec4899', '#10b981', '#eab308', '#a78bfa', '#78716c'];
+  const statusData = groupBy(data, r=>r.status).map(([n,v])=>({name:n, value:v}));
+  const statusDonut = drawDonut(statusData, statusPal);
+  $('status-donut').innerHTML = statusDonut.svg;
+  $('status-center').innerHTML = `<div class="dv">${fmt(statusDonut.total)}</div><div class="dl">Total</div>`;
+  $('status-legend').innerHTML = statusDonut.legend.map(l => `
+    <div class="lrow"><span class="sw" style="background:${l.color}"></span><span class="nm">${l.name}</span><span class="ct">${fmt(l.value)}</span><span class="pc">${fmtPct(l.pct)}</span></div>
+  `).join('');
+
+  // 6 — Channel performance table
+  const chanPerf = computeChannelPerf(data);
+  $('chan-table').innerHTML = `
+    <table class="tbl">
+      <thead><tr><th>Channel</th><th class="num">Signups</th><th class="num">Approved</th><th class="num">Rejected</th><th class="num">Pending</th><th class="num">Conv. Rate</th></tr></thead>
+      <tbody>
+        ${chanPerf.rows.map(r => `<tr>
+          <td class="name">${r.channel}</td>
+          <td class="num">${fmt(r.total)}</td>
+          <td class="num">${fmt(r.approved)}</td>
+          <td class="num">${fmt(r.rejected)}</td>
+          <td class="num">${fmt(r.pending)}</td>
+          <td class="num"><span class="${convClass(r.conv)}">${fmtPct(r.conv)}</span></td>
+        </tr>`).join('')}
+        <tr class="total">
+          <td class="name">Total</td>
+          <td class="num">${fmt(chanPerf.total.total)}</td>
+          <td class="num">${fmt(chanPerf.total.approved)}</td>
+          <td class="num">${fmt(chanPerf.total.rejected)}</td>
+          <td class="num">${fmt(chanPerf.total.pending)}</td>
+          <td class="num"><span class="${convClass(chanPerf.total.conv)}">${fmtPct(chanPerf.total.conv)}</span></td>
+        </tr>
+      </tbody>
+    </table>`;
+
+  // 7 — Vehicle bars
+  const vehData = groupBy(data, r=>r.vehicle);
+  const vehMax = Math.max(...vehData.map(d=>d[1]), 1);
+  const vehTotal = data.length;
+  $('veh-bars').innerHTML = vehData.map(([n,v]) => `
+    <div class="hbar-row">
+      <span class="name">${n}</span>
+      <div class="bar-wrap"><div class="bar" style="width:${(v/vehMax*100).toFixed(1)}%"></div></div>
+      <span class="count">${fmt(v)}</span>
+      <span class="pct">${fmtPct(pct(v, vehTotal))}</span>
+    </div>`).join('') || '<div class="empty">No data</div>';
+
+  // 8 — Top locations
+  const locData = groupBy(data, r=>String(r.location));
+  const locMax = Math.max(...locData.map(d=>d[1]), 1);
+  $('loc-bars').innerHTML = locData.slice(0, 8).map(([n,v]) => `
+    <div class="hbar-row">
+      <span class="name">${n === '0' ? '(unassigned)' : 'Loc ' + n}</span>
+      <div class="bar-wrap"><div class="bar" style="width:${(v/locMax*100).toFixed(1)}%"></div></div>
+      <span class="count">${fmt(v)}</span>
+      <span class="pct">${fmtPct(pct(v, data.length))}</span>
+    </div>`).join('') || '<div class="empty">No data</div>';
+
+  // 8b — Growth table (DOD · WOW · MOM) — uses raw dataset so dates stay anchored
+  const growth = computeGrowth(state.raw, state.refDate);
+  const growthCell = (curr, prev, isPct) => {
+    const abs = curr - prev;
+    const pctChange = prev === 0 ? (curr > 0 ? Infinity : 0) : (abs / prev * 100);
+    const cls = pctChange > 0 ? 'up' : pctChange < 0 ? 'down' : 'flat';
+    const arrow = pctChange > 0 ? '▲' : pctChange < 0 ? '▼' : '—';
+    const pctTxt = pctChange === Infinity ? '+∞' : (pctChange >= 0 ? '+' : '') + pctChange.toFixed(1) + (isPct ? ' pp' : '%');
+    const currTxt = isPct ? curr.toFixed(1)+'%' : fmt(curr);
+    const prevTxt = isPct ? prev.toFixed(1)+'%' : fmt(prev);
+    return `<div class="growth-cell ${cls}">
+      <div class="pct"><span class="arrow">${arrow}</span>${pctTxt}</div>
+      <div class="nums">${currTxt} vs ${prevTxt}</div>
+    </div>`;
+  };
+  $('growth-table').innerHTML = `
+    <table class="growth-tbl">
+      <thead><tr>
+        <th>Metric</th>
+        <th class="num">DOD <span style="color:var(--faint); font-weight:400;">today vs yest.</span></th>
+        <th class="num">WOW <span style="color:var(--faint); font-weight:400;">this wk vs last</span></th>
+        <th class="num">MOM <span style="color:var(--faint); font-weight:400;">this mo vs last</span></th>
+      </tr></thead>
+      <tbody>
+        ${growth.map((m,i) => `<tr${i === growth.length - 1 ? ' class="total"' : ''}>
+          <td class="name">${m.label}</td>
+          <td>${growthCell(m.dod.curr, m.dod.prev, m.isPct)}</td>
+          <td>${growthCell(m.wow.curr, m.wow.prev, m.isPct)}</td>
+          <td>${growthCell(m.mom.curr, m.mom.prev, m.isPct)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+
+  // 9 — Last 5 Days — Signup Source Performance (replaces Top Agents)
+  const l5 = computeLast5Days(state.raw, state.refDate, state.last5Offset);
+  const fmtDay = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  $('last5-table').innerHTML = `
+    <table class="tbl">
+      <thead><tr><th>Date</th><th class="num">DSU</th><th class="num">Promoter</th><th class="num">Total Signups</th></tr></thead>
+      <tbody>
+        ${l5.rows.map(r => `<tr>
+          <td class="name">${fmtDay(r.date)}</td>
+          <td class="num">${fmt(r.dsu)}</td>
+          <td class="num">${fmt(r.promoter)}</td>
+          <td class="num"><strong>${fmt(r.total)}</strong></td>
+        </tr>`).join('')}
+        <tr class="total">
+          <td class="name">Total</td>
+          <td class="num">${fmt(l5.totals.dsu)}</td>
+          <td class="num">${fmt(l5.totals.promoter)}</td>
+          <td class="num">${fmt(l5.totals.total)}</td>
+        </tr>
+      </tbody>
+    </table>`;
+
+  // Date-window navigation
+  const firstDate = l5.rows[l5.rows.length - 1].date;
+  const lastDate  = l5.rows[0].date;
+  const maxOff = maxLast5Offset();
+  const atLatest = state.last5Offset === 0;
+  const atOldest = state.last5Offset >= maxOff;
+  $('last5-nav').innerHTML = `
+    <button class="nav-btn" id="l5-prev" ${atOldest ? 'disabled' : ''}>◀ Prev 5</button>
+    <span class="range-label">${fmtDay(firstDate)} — ${fmtDay(lastDate)}</span>
+    <button class="nav-btn" id="l5-next" ${atLatest ? 'disabled' : ''}>Next 5 ▶</button>
+    ${!atLatest ? '<button class="latest-link" id="l5-latest">⇤ Latest</button>' : ''}
+  `;
+  const prevBtn = $('l5-prev'); if (prevBtn) prevBtn.addEventListener('click', () => { state.last5Offset++; render(); });
+  const nextBtn = $('l5-next'); if (nextBtn) nextBtn.addEventListener('click', () => { if (state.last5Offset > 0) { state.last5Offset--; render(); } });
+  const latestBtn = $('l5-latest'); if (latestBtn) latestBtn.addEventListener('click', () => { state.last5Offset = 0; render(); });
+
+  // 10 — Summary table
+  const sum = computeSummary(data, state.summaryGranularity);
+  $('summary-table').innerHTML = `
+    <table class="tbl">
+      <thead><tr><th>${state.summaryGranularity === 'daily' ? 'Date' : state.summaryGranularity === 'weekly' ? 'Week of' : 'Month'}</th><th class="num">Signups</th><th class="num">Approved</th><th class="num">Rejected</th><th class="num">Pending</th><th class="num">Conv. Rate</th></tr></thead>
+      <tbody>
+        ${sum.map(r => `<tr>
+          <td class="name">${r.period}</td>
+          <td class="num">${fmt(r.total)}</td>
+          <td class="num">${fmt(r.approved)}</td>
+          <td class="num">${fmt(r.rejected)}</td>
+          <td class="num">${fmt(r.pending)}</td>
+          <td class="num"><span class="${convClass(r.conv)}">${fmtPct(r.conv)}</span></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+
+  // Last updated
+  const maxUpd = state.raw.reduce((m,r) => r.updated && r.updated > m ? r.updated : m, new Date(0));
+  $('last-updated').textContent = 'Last Updated · ' + maxUpd.toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function convClass(c) { return c >= 40 ? 'conv-high' : c >= 20 ? 'conv-mid' : 'conv-low'; }
+function $(id) { return document.getElementById(id); }
+
+/* --- 16. INIT UI ------------------------------------------- */
+function renderShell() {
+  $('root').innerHTML = `
+    <!-- FILTER BAR -->
+    <div class="filterbar" id="filterbar">
+      <div class="fitem"><div class="flabel">Date Range</div>
+        <select id="f-date">
+          <option value="all">All time</option>
+          <option value="7d">Last 7 days</option>
+          <option value="30d">Last 30 days</option>
+          <option value="90d">Last 90 days</option>
+          <option value="month">This month</option>
+          <option value="last_month">Last month</option>
+        </select></div>
+      <div class="fitem"><div class="flabel">Channel</div><select id="f-channel"></select></div>
+      <div class="fitem"><div class="flabel">Status</div><select id="f-status"></select></div>
+      <div class="fitem"><div class="flabel">Vehicle Type</div><select id="f-vehicle"></select></div>
+      <div class="fitem"><div class="flabel">Location</div><select id="f-location"></select></div>
+      <div class="reset-wrap"><button class="reset-btn" id="reset-btn">↺ Reset</button></div>
+    </div>
+
+    <!-- KPIS -->
+    <section class="kpis" id="kpis"></section>
+
+    <!-- TREND + FUNNEL -->
+    <section class="row rA">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Daily Signups Trend</h2>
+          <div class="tabs" id="trend-tabs">
+            <button class="tab on" data-g="daily">Daily</button>
+            <button class="tab" data-g="weekly">Weekly</button>
+            <button class="tab" data-g="monthly">Monthly</button>
+          </div>
+        </div>
+        <div class="chart-area" id="trend-svg"></div>
+        <div class="chart-legend">
+          <span class="lg"><span class="sw" style="background:var(--brand-soft)"></span>Signups</span>
+          <span class="lg"><span class="sw" style="background:var(--warm); background: repeating-linear-gradient(90deg, var(--warm), var(--warm) 4px, transparent 4px, transparent 7px)"></span>Moving Avg</span>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Signup Funnel</h2><span class="pmeta">by status</span></div>
+        <div class="funnel" id="funnel"></div>
+      </div>
+    </section>
+
+    <!-- DONUTS -->
+    <section class="row rB">
+      <div class="panel">
+        <div class="panel-head"><h2>Signups by Channel</h2></div>
+        <div class="donut-wrap">
+          <div class="donut"><div id="chan-donut"></div><div class="donut-center" id="chan-center"></div></div>
+          <div class="donut-legend" id="chan-legend"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Signups by Status</h2></div>
+        <div class="donut-wrap">
+          <div class="donut"><div id="status-donut"></div><div class="donut-center" id="status-center"></div></div>
+          <div class="donut-legend" id="status-legend"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHANNEL PERF + VEHICLE -->
+    <section class="row rC">
+      <div class="panel">
+        <div class="panel-head"><h2>Channel Performance</h2></div>
+        <div class="tbl-wrap" id="chan-table"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Vehicle Type</h2></div>
+        <div class="hbars" id="veh-bars"></div>
+      </div>
+    </section>
+
+    <!-- LOCATIONS + AGENTS -->
+    <section class="row rD">
+      <div class="panel">
+        <div class="panel-head"><h2>Top Locations by Signups</h2></div>
+        <div class="hbars" id="loc-bars"></div>
+      </div>
+      <div class="panel panel-feature">
+        <div class="panel-head">
+          <h2>Last 5 Days — Signup Source Performance</h2>
+          <div class="date-nav" id="last5-nav"></div>
+        </div>
+        <div class="tbl-wrap" id="last5-table"></div>
+      </div>
+    </section>
+
+    <!-- GROWTH / PROGRESS -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Progress — DOD · WOW · MOM</h2>
+        <span class="pmeta">period-over-period change · from full dataset</span>
+      </div>
+      <div class="tbl-wrap" id="growth-table"></div>
+    </section>
+
+    <!-- SUMMARY -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Signup Summary</h2>
+        <div class="tabs" id="sum-tabs">
+          <button class="tab on" data-g="daily">Daily</button>
+          <button class="tab" data-g="weekly">Weekly</button>
+          <button class="tab" data-g="monthly">Monthly</button>
+        </div>
+      </div>
+      <div class="tbl-wrap" id="summary-table"></div>
+    </section>
+
+    <div class="foot">
+      <strong>Dashboard architecture</strong> — Data is loaded from <code>./data.json</code> (current snapshot: 6,529 records). To go live from your Google Sheet, replace <code>DATA_SOURCE</code> at the top of the script with your Apps Script web-app URL — nothing else changes. Phone numbers are not loaded (PII). KPIs, charts and tables all re-compute dynamically when filters change.
+    </div>
+  `;
+}
+
+function populateFilters() {
+  const uniq = (arr) => [...new Set(arr)].filter(Boolean).sort();
+  const sel = (id, opts, allLabel='All') => {
+    $(id).innerHTML = `<option value="all">${allLabel}</option>` + opts.map(o => `<option value="${o}">${o}</option>`).join('');
+  };
+  sel('f-channel', uniq(state.raw.map(r=>r.channel)));
+  sel('f-status', uniq(state.raw.map(r=>r.status)));
+  sel('f-vehicle', uniq(state.raw.map(r=>r.vehicle)));
+  sel('f-location', uniq(state.raw.map(r=>String(r.location))));
+}
+
+function bindEvents() {
+  $('f-date').addEventListener('change', e => { state.filters.dateRange = e.target.value; render(); });
+  $('f-channel').addEventListener('change', e => { state.filters.channel = e.target.value; render(); });
+  $('f-status').addEventListener('change', e => { state.filters.status = e.target.value; render(); });
+  $('f-vehicle').addEventListener('change', e => { state.filters.vehicle = e.target.value; render(); });
+  $('f-location').addEventListener('change', e => { state.filters.location = e.target.value; render(); });
+  $('reset-btn').addEventListener('click', () => {
+    state.filters = { dateRange:'all', channel:'all', status:'all', vehicle:'all', location:'all' };
+    ['f-date','f-channel','f-status','f-vehicle','f-location'].forEach(id => $(id).value = 'all');
+    render();
+  });
+
+  document.querySelectorAll('#trend-tabs .tab').forEach(btn => btn.addEventListener('click', e => {
+    document.querySelectorAll('#trend-tabs .tab').forEach(b => b.classList.remove('on'));
+    e.target.classList.add('on');
+    state.trendGranularity = e.target.dataset.g;
+    render();
+  }));
+  document.querySelectorAll('#sum-tabs .tab').forEach(btn => btn.addEventListener('click', e => {
+    document.querySelectorAll('#sum-tabs .tab').forEach(b => b.classList.remove('on'));
+    e.target.classList.add('on');
+    state.summaryGranularity = e.target.dataset.g;
+    render();
+  }));
+}
+
+/* Theme toggle */
+document.getElementById('theme-tog').addEventListener('click', () => {
+  const r = document.documentElement;
+  const cur = r.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : cur === 'light' ? 'dark' : (matchMedia('(prefers-color-scheme: dark)').matches ? 'light' : 'dark');
+  r.setAttribute('data-theme', next);
+});
+
+/* --- 17. BOOT --------------------------------------------- */
+(async function boot() {
+  try {
+    const raw = await loadData();
+    state.raw = raw;
+    state.refDate = raw.reduce((m, r) => r.created > m ? r.created : m, new Date(0));
+    renderShell();
+    populateFilters();
+    bindEvents();
+    render();
+  } catch (e) {
+    document.getElementById('root').innerHTML = `<div class="err">Failed to load dashboard: ${e.message}</div>`;
+    console.error(e);
+  }
+})();
+</script>
