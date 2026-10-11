@@ -95,6 +95,12 @@
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
   .theme-tog { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); color: var(--header-fg); padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-family: var(--font-sans); }
   .theme-tog:hover { background: rgba(255,255,255,0.14); }
+  .refresh-btn { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18); color: var(--header-fg); padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-family: var(--font-sans); display: inline-flex; align-items: center; gap: 5px; font-weight: 500; }
+  .refresh-btn:hover:not(:disabled) { background: rgba(255,255,255,0.22); }
+  .refresh-btn:disabled { opacity: 0.6; cursor: wait; }
+  .refresh-btn .spin { display: inline-block; }
+  .refresh-btn.loading .spin { animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   .wrap { padding: 14px 20px 28px; max-width: 1700px; margin: 0 auto; }
   @media (max-width: 700px) { .wrap { padding: 12px; } .appheader { padding: 14px 16px; } }
@@ -258,6 +264,7 @@
   <div class="appheader-right">
     <span class="live"><span class="dot"></span>Live from sheet</span>
     <span id="last-updated">Last Updated · —</span>
+    <button class="refresh-btn" id="refresh-btn" title="Refresh data now"><span class="spin">↻</span> Refresh</button>
     <button class="theme-tog" id="theme-tog">🌓 Theme</button>
   </div>
 </header>
@@ -332,7 +339,9 @@ function fmtDateShort(d) { return d.toLocaleDateString('en-US', { month: 'short'
    Google's docs.google.com endpoints send proper CORS headers,
    so plain fetch() works from any origin (artifact, GitHub Pages, …). */
 async function loadData() {
-  const res = await fetch(DATA_SOURCE);
+  // Cache-buster forces Google to serve fresh data, not a cached copy
+  const url = DATA_SOURCE + (DATA_SOURCE.includes('?') ? '&' : '?') + '_cb=' + Date.now();
+  const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error('Failed to load CSV: HTTP ' + res.status);
   const text = await res.text();
   const rows = parseCSV(text);
@@ -1137,6 +1146,30 @@ document.getElementById('theme-tog').addEventListener('click', () => {
   const next = cur === 'dark' ? 'light' : cur === 'light' ? 'dark' : (matchMedia('(prefers-color-scheme: dark)').matches ? 'light' : 'dark');
   r.setAttribute('data-theme', next);
 });
+
+/* --- Auto-refresh + manual refresh --------------------------
+   Reloads data from the sheet without a page reload.
+   Fires every AUTO_REFRESH_MS, and on the Refresh button. */
+const AUTO_REFRESH_MS = 30 * 1000;  // 30 seconds — feels live, polite to Google
+async function refreshData() {
+  const btn = document.getElementById('refresh-btn');
+  if (btn) { btn.classList.add('loading'); btn.disabled = true; }
+  try {
+    const raw = await loadData();
+    state.raw = raw;
+    state.refDate = raw.reduce((m, r) => r.created > m ? r.created : m, new Date(0));
+    populateFilters();
+    render();
+  } catch (e) {
+    console.error('Refresh failed:', e);
+  } finally {
+    if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
+  }
+}
+setInterval(refreshData, AUTO_REFRESH_MS);
+// Refresh button lives in the static <header>, so it already exists here.
+const refreshBtn = document.getElementById('refresh-btn');
+if (refreshBtn) refreshBtn.addEventListener('click', refreshData);
 
 /* --- 17. BOOT --------------------------------------------- */
 (async function boot() {
