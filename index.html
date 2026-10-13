@@ -1,0 +1,870 @@
+<title>Labby Driver Operations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+  /* ===== LABBY DRIVER OPS DASHBOARD — 3 pages ===== */
+  :root {
+    --bg: #f6f3fb;
+    --surface: #ffffff;
+    --surface-2: #faf8fd;
+    --surface-3: #f1ebfa;
+    --border: #e8e1f4;
+    --border-strong: #c9b8e5;
+    --fg: #1a1429;
+    --fg-soft: #3b2e5a;
+    --muted: #6b5e7f;
+    --faint: #9b8fb0;
+    --header-bg: #581189;
+    --header-fg: #ffffff;
+    --header-muted: #d8c7f0;
+    --brand: #581189;
+    --brand-soft: #7c3aed;
+    --brand-tint: #ede9fe;
+    --digital: #3b82f6;
+    --digital-soft: #93c5fd;
+    --digital-tint: #dbeafe;
+    --promoter: #8b5cf6;
+    --promoter-soft: #c4b5fd;
+    --promoter-tint: #ede9fe;
+    --hot: #dc2626;
+    --warm: #f59e0b;
+    --cold: #3b82f6;
+    --success: #10b981;
+    --teal: #14b8a6;
+    --rose: #f43f5e;
+    --purple: #8b5cf6;
+    --neutral: #78716c;
+    --hot-tint: #fee2e2;
+    --warm-tint: #fef3c7;
+    --success-tint: #d1fae5;
+    --shadow-sm: 0 1px 2px rgba(15,30,61,0.04);
+    --shadow-md: 0 1px 3px rgba(15,30,61,0.06), 0 1px 2px rgba(15,30,61,0.04);
+    --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:#120a1f;--surface:#1c1230;--surface-2:#251940;--surface-3:#2f2051;
+      --border:#332149;--border-strong:#4a3268;--fg:#efe9f8;--fg-soft:#d7cce9;
+      --muted:#9b8db5;--faint:#6a5f82;--header-bg:#1a0633;--header-muted:#b9a7d4;
+      --brand:#c084fc;--brand-soft:#a78bfa;--brand-tint:rgba(192,132,252,0.16);
+      --digital:#60a5fa;--digital-soft:#3b82f6;--digital-tint:rgba(96,165,250,0.14);
+      --promoter:#c084fc;--promoter-soft:#a78bfa;--promoter-tint:rgba(192,132,252,0.14);
+      --hot:#f87171;--warm:#fbbf24;--success:#34d399;
+      --hot-tint:rgba(248,113,113,0.14);--warm-tint:rgba(251,191,36,0.14);
+      --success-tint:rgba(52,211,153,0.14);
+      --shadow-sm:0 1px 2px rgba(0,0,0,0.4);
+      --shadow-md:0 1px 3px rgba(0,0,0,0.4),0 1px 2px rgba(0,0,0,0.3);
+      color-scheme:dark;
+    }
+  }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-sans); font-size: 13px; line-height: 1.4; -webkit-font-smoothing: antialiased; }
+
+  /* ===== APP HEADER + NAV ===== */
+  .appheader { background: var(--header-bg); color: var(--header-fg); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  .appheader .brand { display: flex; align-items: center; gap: 14px; }
+  .appheader .logo { width: 40px; height: 40px; background: #fff; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 4px; box-shadow: 0 2px 8px rgba(88,17,137,0.25); }
+  .appheader .logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .appheader h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+  .appheader .divider { width: 1px; height: 22px; background: rgba(255,255,255,0.2); }
+  .appheader .sub { font-size: 12px; color: var(--header-muted); }
+  .appheader-right { display: flex; align-items: center; gap: 14px; font-size: 12px; color: var(--header-muted); flex-wrap: wrap; }
+  .appheader-right .live { display: inline-flex; align-items: center; gap: 6px; }
+  .appheader-right .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .hbtn { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18); color: var(--header-fg); padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-family: var(--font-sans); display: inline-flex; align-items: center; gap: 5px; font-weight: 500; }
+  .hbtn:hover:not(:disabled) { background: rgba(255,255,255,0.22); }
+  .hbtn:disabled { opacity: 0.6; cursor: wait; }
+  .hbtn.loading .spin { animation: spin 0.8s linear infinite; }
+
+  /* ===== PAGE NAV ===== */
+  .pagenav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; gap: 4px; overflow-x: auto; }
+  .pagenav .nav-item { padding: 12px 16px; font-size: 13px; color: var(--muted); border-bottom: 2px solid transparent; cursor: pointer; font-weight: 500; white-space: nowrap; background: none; border-top: none; border-left: none; border-right: none; font-family: var(--font-sans); }
+  .pagenav .nav-item:hover { color: var(--fg); }
+  .pagenav .nav-item.active { color: var(--brand); border-bottom-color: var(--brand); font-weight: 600; }
+
+  .wrap { padding: 14px 20px 28px; max-width: 1700px; margin: 0 auto; }
+  @media (max-width: 700px) { .wrap { padding: 12px; } .appheader { padding: 12px 16px; } .pagenav { padding: 0 12px; } }
+
+  /* ===== PAGE TITLE + SUBTITLE ===== */
+  .pagetitle { margin-bottom: 14px; }
+  .pagetitle h2 { margin: 0; font-size: 24px; font-weight: 700; color: var(--fg); letter-spacing: -0.02em; }
+  .pagetitle p { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+
+  /* ===== FILTER BAR ===== */
+  .filterbar { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: grid; grid-template-columns: repeat(6, 1fr) auto; gap: 8px; margin-bottom: 10px; box-shadow: var(--shadow-sm); align-items: end; }
+  @media (max-width: 1200px) { .filterbar { grid-template-columns: repeat(3, 1fr); } .filterbar .reset-wrap { grid-column: span 3; } }
+  @media (max-width: 560px) { .filterbar { grid-template-columns: repeat(2, 1fr); } .filterbar .reset-wrap { grid-column: span 2; } }
+  .fitem .flabel { font-size: 10px; color: var(--muted); font-weight: 500; margin-bottom: 4px; letter-spacing: 0.03em; }
+  .fitem select { width: 100%; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-size: 12px; color: var(--fg-soft); font-family: var(--font-sans); appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; padding-right: 26px; cursor: pointer; }
+  .fitem select:focus { outline: 2px solid var(--brand-soft); outline-offset: -1px; }
+  .reset-btn { background: var(--brand); color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 11px; font-weight: 500; cursor: pointer; font-family: var(--font-sans); white-space: nowrap; display: flex; align-items: center; gap: 6px; height: 32px; }
+  .reset-btn:hover { background: var(--brand-soft); }
+
+  /* ===== KPI ===== */
+  .kpis { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; margin-bottom: 10px; }
+  @media (max-width: 1400px) { .kpis { grid-template-columns: repeat(4, 1fr); } }
+  @media (max-width: 700px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 13px 14px 12px; min-width: 0; position: relative; box-shadow: var(--shadow-sm); overflow: hidden; }
+  .kpi::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--brand-soft); opacity: 0.5; }
+  .kpi.success::before { background: var(--success); }
+  .kpi.hot::before { background: var(--hot); }
+  .kpi.warm::before { background: var(--warm); }
+  .kpi.rose::before { background: var(--rose); }
+  .kpi.digital::before { background: var(--digital); }
+  .kpi.promoter::before { background: var(--promoter); }
+  .kpi.purple::before { background: var(--purple); }
+  .kpi .klabel { font-size: 10px; font-weight: 500; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.03em; display: flex; align-items: center; gap: 6px; text-transform: uppercase; }
+  .kpi .kvalue { font-family: var(--font-mono); font-size: 22px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.1; color: var(--fg); }
+  .kpi .kdelta { font-family: var(--font-mono); font-size: 10px; margin-top: 5px; display: flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
+  .kpi .kdelta.up { color: var(--success); }
+  .kpi .kdelta.down { color: var(--hot); }
+  .kpi .kdelta.flat { color: var(--muted); }
+
+  /* ===== PANELS + ROWS ===== */
+  .row { display: grid; gap: 10px; margin-bottom: 10px; min-width: 0; }
+  .row.rA { grid-template-columns: 1.5fr 1fr; }
+  .row.rB { grid-template-columns: 1fr 1fr; }
+  .row.rC { grid-template-columns: 1.3fr 1fr; }
+  .row.rD { grid-template-columns: 1fr 1.3fr; }
+  @media (max-width: 1100px) { .row.rA, .row.rB, .row.rC, .row.rD { grid-template-columns: 1fr; } }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; min-width: 0; box-shadow: var(--shadow-sm); }
+  .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .panel-head h3 { margin: 0; font-size: 14px; font-weight: 600; color: var(--fg); letter-spacing: -0.01em; }
+  .panel-head .pmeta { font-family: var(--font-mono); color: var(--faint); font-size: 11px; }
+  .tabs { display: inline-flex; gap: 2px; background: var(--surface-2); padding: 2px; border-radius: 6px; }
+  .tab { padding: 4px 10px; border-radius: 4px; font-size: 11px; color: var(--muted); cursor: pointer; font-weight: 500; border: none; background: transparent; font-family: var(--font-sans); }
+  .tab.on { background: var(--surface); color: var(--fg); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+  /* ===== TREND CHART ===== */
+  .chart-area { position: relative; height: 240px; width: 100%; }
+  .chart-area svg { width: 100%; height: 100%; display: block; }
+  .chart-legend { display: flex; gap: 14px; margin-top: 10px; font-size: 11px; color: var(--muted); flex-wrap: wrap; }
+  .chart-legend .lg { display: inline-flex; align-items: center; gap: 6px; }
+  .chart-legend .sw { width: 12px; height: 2px; border-radius: 1px; }
+
+  /* ===== FUNNEL ===== */
+  .funnel { display: flex; flex-direction: column; gap: 8px; }
+  .funnel-row { display: grid; grid-template-columns: 130px 1fr 60px 55px; gap: 10px; align-items: center; font-size: 12px; }
+  .funnel-row .name { color: var(--fg-soft); font-weight: 500; }
+  .funnel-row .bar-wrap { background: var(--surface-2); border-radius: 4px; height: 22px; overflow: hidden; }
+  .funnel-row .bar { height: 100%; background: var(--brand-soft); border-radius: 3px; transition: width 0.3s ease; }
+  .funnel-row .count { font-family: var(--font-mono); text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .funnel-row .pct { font-family: var(--font-mono); text-align: right; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* ===== DONUT ===== */
+  .donut-wrap { display: flex; align-items: center; gap: 18px; }
+  @media (max-width: 500px) { .donut-wrap { flex-direction: column; align-items: stretch; } }
+  .donut { position: relative; flex-shrink: 0; width: 140px; height: 140px; }
+  .donut svg { width: 100%; height: 100%; }
+  .donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .donut-center .dv { font-family: var(--font-mono); font-size: 20px; font-weight: 600; color: var(--fg); }
+  .donut-center .dl { font-size: 9px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px; }
+  .donut-legend { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; font-size: 11px; max-height: 190px; overflow-y: auto; }
+  .donut-legend .lrow { display: grid; grid-template-columns: 10px 1fr auto auto; gap: 8px; align-items: center; }
+  .donut-legend .sw { width: 10px; height: 10px; border-radius: 2px; }
+  .donut-legend .nm { color: var(--fg-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .donut-legend .ct { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 500; }
+  .donut-legend .pc { font-family: var(--font-mono); color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; min-width: 42px; text-align: right; }
+
+  /* ===== HORIZONTAL BARS ===== */
+  .hbars { display: flex; flex-direction: column; gap: 8px; }
+  .hbar-row { display: grid; grid-template-columns: 150px 1fr 60px 50px; gap: 10px; align-items: center; font-size: 12px; }
+  @media (max-width: 500px) { .hbar-row { grid-template-columns: 100px 1fr 55px; } .hbar-row .pct { display: none; } }
+  .hbar-row .name { color: var(--fg-soft); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hbar-row .bar-wrap { background: var(--surface-2); border-radius: 4px; height: 20px; overflow: hidden; }
+  .hbar-row .bar { height: 100%; background: var(--brand-soft); border-radius: 3px; transition: width 0.3s ease; }
+  .hbar-row .count { font-family: var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .hbar-row .pct { font-family: var(--font-mono); text-align: right; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* ===== TABLES ===== */
+  .tbl-wrap { overflow-x: auto; }
+  .tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .tbl th { text-align: left; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 10px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--surface-2); }
+  .tbl th.num { text-align: right; }
+  .tbl td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  .tbl td.name { font-weight: 500; color: var(--fg-soft); }
+  .tbl td.num { font-family: var(--font-mono); text-align: right; }
+  .tbl tr:hover td { background: var(--surface-2); }
+  .tbl tr.total td { font-weight: 700; background: var(--surface-3); border-bottom: none; }
+  .conv-high { background: var(--success-tint); color: var(--success); padding: 2px 7px; border-radius: 10px; font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
+  .conv-mid { background: var(--warm-tint); color: var(--warm); padding: 2px 7px; border-radius: 10px; font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
+  .conv-low { background: var(--hot-tint); color: var(--hot); padding: 2px 7px; border-radius: 10px; font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
+
+  /* ===== PLACEHOLDER FOR UNFINISHED PAGES ===== */
+  .page-placeholder { background: var(--surface); border: 1px dashed var(--border-strong); border-radius: 10px; padding: 60px 24px; text-align: center; color: var(--muted); font-size: 14px; }
+  .page-placeholder h3 { color: var(--brand); margin: 0 0 10px; font-size: 20px; }
+  .page-placeholder p { margin: 6px 0; }
+  .page-placeholder .coming { font-family: var(--font-mono); font-size: 11px; color: var(--faint); margin-top: 14px; }
+
+  /* ===== STATES ===== */
+  .loading { padding: 40px; text-align: center; color: var(--muted); }
+  .err { padding: 14px; background: var(--hot-tint); color: var(--hot); border-radius: 8px; margin: 20px; font-size: 12px; }
+  [hidden] { display: none !important; }
+</style>
+
+<header class="appheader">
+  <div class="brand">
+    <div class="logo"><img src="data:image/png;base64,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" alt="Labby"></div>
+    <h1>Labby</h1>
+    <div class="divider"></div>
+    <div class="sub">Driver Operations Dashboard</div>
+  </div>
+  <div class="appheader-right">
+    <span class="live"><span class="dot"></span>Live from sheet</span>
+    <span id="last-updated">Last Updated · —</span>
+    <button class="hbtn" id="refresh-btn" title="Refresh data now"><span class="spin">↻</span> Refresh</button>
+    <button class="hbtn" id="theme-tog">🌓 Theme</button>
+  </div>
+</header>
+
+<nav class="pagenav">
+  <button class="nav-item active" data-page="1">1. Acquisition Overview</button>
+  <button class="nav-item" data-page="2">2. Channel Performance</button>
+  <button class="nav-item" data-page="3">3. Activation</button>
+</nav>
+
+<div class="wrap">
+  <!-- Shared filter bar (one place, drives all pages) -->
+  <div id="filterbar-container"></div>
+
+  <!-- PAGE 1 -->
+  <section id="page-1" class="page">
+    <div class="pagetitle">
+      <h2>Driver Signups &amp; Acquisition</h2>
+      <p>Track driver acquisition, signup volume, sources, and conversion performance.</p>
+    </div>
+    <div id="page-1-content"><div class="loading">Loading…</div></div>
+  </section>
+
+  <!-- PAGE 2 -->
+  <section id="page-2" class="page" hidden>
+    <div class="pagetitle">
+      <h2>Channel Performance</h2>
+      <p>Compare Digital and Promoter acquisition performance, conversion, and driver quality.</p>
+    </div>
+    <div class="page-placeholder">
+      <h3>Coming next</h3>
+      <p>Digital vs Promoter side-by-side, conversion trend, funnel comparison, promoter leaderboard, vehicle mix by channel.</p>
+      <div class="coming">I'll ship Page 2 right after you approve Page 1 so we can tweak the design once, not three times.</div>
+    </div>
+  </section>
+
+  <!-- PAGE 3 -->
+  <section id="page-3" class="page" hidden>
+    <div class="pagetitle">
+      <h2>Activation</h2>
+      <p>First trip, 3-day activation, trip volume per driver — using <code>first_trip_date</code> and <code>completed_trips_count</code>.</p>
+    </div>
+    <div class="page-placeholder">
+      <h3>Coming next</h3>
+      <p>Activation funnel (Signup → Approved → Activated → 3-day activated), activation rate by channel, activation leaderboard.</p>
+      <div class="coming">⚠ Looking at the current data, almost every row has <code>completed_trips_count = 0</code>. Page 3 will show real numbers as trips start happening.</div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ============================================================
+   LABBY DRIVER OPERATIONS DASHBOARD — v15
+   3 pages: Acquisition Overview | Channel Performance | Activation
+   Source: Google Sheet → Fleet Data tab (CSV export)
+   ============================================================ */
+
+const DATA_SOURCE = 'https://docs.google.com/spreadsheets/d/1zS5bJmdo5o-rJPgREuKVEyi6tRaPXMQMNWDXns-RTgw/gviz/tq?tqx=out:csv&sheet=Fleet%20Data';
+const AUTO_REFRESH_MS = 30 * 1000;
+
+/* Status groups — business rules confirmed by Volt */
+const APPROVED = ['ASCreated', 'ASDataExtracted', 'NotEngaged', 'ASAccepted'];
+const REJECTED = ['ASRejected', 'Closed', 'ASAbandoned'];
+const PENDING  = ['ASInitial', 'ASCorrection', 'ASVerification', 'ASReview'];
+
+const state = {
+  raw: [],
+  filtered: [],
+  refDate: null,
+  activePage: '1',
+  filters: { dateRange: 'all', channel: 'all', status: 'all', vehicle: 'all', service: 'all', recruiter: 'all' },
+  trendGranularity: 'daily'
+};
+
+/* ---- helpers ---- */
+const fmt = n => n == null ? '—' : n.toLocaleString('en-US');
+const pct = (n, d) => d > 0 ? (n/d*100) : 0;
+const fmtPct = v => v.toFixed(v < 10 ? 2 : 1) + '%';
+const fmtDelta = v => (v >= 0 ? '▲ +' : '▼ ') + v.toFixed(1) + '%';
+function startOfDay(d){const x=new Date(d);x.setHours(0,0,0,0);return x;}
+function startOfWeek(d){const x=startOfDay(d);x.setDate(x.getDate()-x.getDay());return x;}
+function startOfMonth(d){const x=startOfDay(d);x.setDate(1);return x;}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
+function addMonths(d,n){const x=new Date(d);x.setMonth(x.getMonth()+n);return x;}
+function fmtDate(d){return d.toISOString().slice(0,10);}
+function fmtDateShort(d){return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
+function fmtDay(d){return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
+const $ = id => document.getElementById(id);
+
+/* ---- CSV ---- */
+function parseCSV(text) {
+  const rows = [];
+  let row = [], field = '', inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"' && text[i+1] === '"') { field += '"'; i++; }
+      else if (c === '"') inQ = false;
+      else field += c;
+    } else {
+      if (c === '"') inQ = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (field !== '' || row.length > 0) { row.push(field); rows.push(row); row = []; field = ''; }
+        if (c === '\r' && text[i+1] === '\n') i++;
+      } else field += c;
+    }
+  }
+  if (field !== '' || row.length > 0) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+function parseDate(s) {
+  if (!s || s === 'NA') return null;
+  let d = new Date(s);
+  if (!isNaN(d.getTime())) return d;
+  d = new Date(String(s).replace(' ', 'T'));
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/* ---- Load from Fleet Data CSV ---- */
+async function loadData() {
+  const url = DATA_SOURCE + (DATA_SOURCE.includes('?') ? '&' : '?') + '_cb=' + Date.now();
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Failed to load CSV: HTTP ' + res.status);
+  const text = await res.text();
+  const rows = parseCSV(text);
+  if (rows.length < 2) return [];
+  const headers = rows[0];
+  const col = name => headers.indexOf(name);
+  return rows.slice(1)
+    .filter(r => r[col('captain_phone')] || r[col('captain_id')])
+    .map(r => ({
+      lead_source: r[col('lead_source')] || '',
+      recruiter_name: r[col('recruiter_name')] || '',
+      captain_id: r[col('captain_id')] || null,
+      acquisition_date: parseDate(r[col('acquisition_date')]),
+      vehicle_service: r[col('vehicle_service_name')] || 'Unknown',
+      vehicle_type: r[col('vehicle_type')] || 'Unknown',
+      registration_date: parseDate(r[col('registration_date')]),
+      documents_completed_date: parseDate(r[col('documents_completed_date')]),
+      approval_date: parseDate(r[col('approval_date')]),
+      account_status: r[col('account_status')] || '',
+      status: r[col('applicant_status_label')] || '',
+      first_trip_date: parseDate(r[col('first_trip_date')]),
+      completed_trips: Number(r[col('completed_trips_count')]) || 0,
+      trips_within_3d: Number(r[col('completed_trips_within_3_days')]) || 0,
+    }))
+    .filter(r => r.acquisition_date && !isNaN(r.acquisition_date.getTime()));
+}
+
+/* ---- Channel normalization: lead_source "Digital Lead" => "Digital Signup" for consistency ---- */
+const channelOf = r => r.lead_source === 'Digital Lead' ? 'Digital Signup' : r.lead_source || 'Unknown';
+
+/* ---- Filters ---- */
+function applyFilters(data) {
+  const f = state.filters;
+  let r = data;
+  if (f.dateRange !== 'all') {
+    let from;
+    if (f.dateRange === '7d') from = addDays(state.refDate, -7);
+    else if (f.dateRange === '30d') from = addDays(state.refDate, -30);
+    else if (f.dateRange === '90d') from = addDays(state.refDate, -90);
+    else if (f.dateRange === 'month') from = startOfMonth(state.refDate);
+    else if (f.dateRange === 'last_month') {
+      const start = startOfMonth(addMonths(state.refDate, -1));
+      const end = startOfMonth(state.refDate);
+      r = r.filter(x => x.acquisition_date >= start && x.acquisition_date < end);
+      from = null;
+    }
+    if (from) r = r.filter(x => x.acquisition_date >= from);
+  }
+  if (f.channel !== 'all') r = r.filter(x => channelOf(x) === f.channel);
+  if (f.status !== 'all') r = r.filter(x => x.status === f.status);
+  if (f.vehicle !== 'all') r = r.filter(x => x.vehicle_type === f.vehicle);
+  if (f.service !== 'all') r = r.filter(x => x.vehicle_service === f.service);
+  if (f.recruiter !== 'all') r = r.filter(x => x.recruiter_name === f.recruiter);
+  return r;
+}
+
+/* ---- KPI calcs ---- */
+function computeKPIs(data, ref) {
+  const total = data.length;
+  const dStart = startOfDay(ref);
+  const dPrev = addDays(dStart, -1);
+  const wStart = startOfWeek(ref);
+  const wPrev = addDays(wStart, -7);
+  const mStart = startOfMonth(ref);
+  const mPrev = startOfMonth(addMonths(ref, -1));
+  const inR = (r, from, to) => r.acquisition_date >= from && r.acquisition_date < to;
+
+  const today = data.filter(r => inR(r, dStart, addDays(dStart,1))).length;
+  const yest = data.filter(r => inR(r, dPrev, dStart)).length;
+  const todayEnd = addDays(dStart, 1);
+  const dayOfWeek = Math.floor((dStart - wStart) / 86400000);
+  const dayOfMonth = ref.getDate();
+  const daysLastMo = new Date(mPrev.getFullYear(), mPrev.getMonth()+1, 0).getDate();
+  const effectiveDay = Math.min(dayOfMonth, daysLastMo);
+  const lastWTDEnd = addDays(wPrev, dayOfWeek + 1);
+  const lastMTDEnd = new Date(mPrev.getFullYear(), mPrev.getMonth(), effectiveDay + 1);
+
+  const week = data.filter(r => inR(r, wStart, todayEnd)).length;
+  const lastWeek = data.filter(r => inR(r, wPrev, lastWTDEnd)).length;
+  const month = data.filter(r => inR(r, mStart, todayEnd)).length;
+  const lastMonth = data.filter(r => inR(r, mPrev, lastMTDEnd)).length;
+
+  const approved = data.filter(r => APPROVED.includes(r.status)).length;
+  const rejected = data.filter(r => REJECTED.includes(r.status)).length;
+  const pending = data.filter(r => PENDING.includes(r.status)).length;
+  const convRate = pct(approved, total);
+  const prevData = data.filter(r => inR(r, mPrev, mStart));
+  const prevApproved = prevData.filter(r => APPROVED.includes(r.status)).length;
+  const convDelta = convRate - pct(prevApproved, prevData.length);
+
+  const chg = (now, prev) => prev === 0 ? (now > 0 ? 100 : 0) : (now - prev) / prev * 100;
+
+  return {
+    total, today, todayDelta: chg(today, yest),
+    week, weekDelta: chg(week, lastWeek),
+    month, monthDelta: chg(month, lastMonth),
+    approved, approvedPct: pct(approved, total),
+    rejected, rejectedPct: pct(rejected, total),
+    pending, pendingPct: pct(pending, total),
+    convRate, convDelta
+  };
+}
+
+/* ---- Funnel (uses real pipeline stages) ---- */
+function computeFunnel(data) {
+  const total = data.length;
+  const initial = data.filter(r => r.status === 'ASInitial').length + data.filter(r => APPROVED.includes(r.status) || r.status === 'ASCorrection' || r.status === 'ASReview' || r.status === 'ASVerification').length;
+  // Simpler + more honest: count presence of each stage marker
+  const stages = [
+    { name: 'Total Signups', count: total },
+    { name: 'Initial (OTP)', count: data.filter(r => r.status !== 'ASRejected' && r.status !== 'Closed').length },
+    { name: 'Data Extracted', count: data.filter(r => r.documents_completed_date).length },
+    { name: 'Review / Correction', count: data.filter(r => ['ASReview','ASCorrection','ASVerification'].includes(r.status)).length },
+    { name: 'Approved', count: data.filter(r => APPROVED.includes(r.status)).length },
+    { name: 'Rejected', count: data.filter(r => REJECTED.includes(r.status)).length }
+  ];
+  const max = Math.max(...stages.map(s => s.count), 1);
+  const palette = ['#581189', '#3b82f6', '#14b8a6', '#f59e0b', '#10b981', '#f43f5e'];
+  return stages.map((s, i) => ({
+    ...s,
+    pctOfTotal: pct(s.count, total),
+    width: s.count / max * 100,
+    color: palette[i % palette.length]
+  }));
+}
+
+/* ---- Grouping utility ---- */
+function groupBy(data, keyFn) {
+  const m = new Map();
+  for (const r of data) {
+    const k = keyFn(r);
+    m.set(k, (m.get(k) || 0) + 1);
+  }
+  return [...m.entries()].sort((a,b) => b[1] - a[1]);
+}
+
+/* ---- Trend ---- */
+function computeTrend(data, granularity, ref) {
+  const bucket = r => {
+    const d = r.acquisition_date;
+    if (granularity === 'daily') return fmtDate(startOfDay(d));
+    if (granularity === 'weekly') return fmtDate(startOfWeek(d));
+    return fmtDate(startOfMonth(d));
+  };
+  const m = new Map();
+  for (const r of data) {
+    const k = bucket(r);
+    m.set(k, (m.get(k) || 0) + 1);
+  }
+  const pts = [...m.entries()].sort((a,b) => a[0].localeCompare(b[0]));
+  if (!pts.length) return { points: [], ma: [], max: 1 };
+  const sliced = pts.slice(-30);
+  const w = granularity === 'daily' ? 7 : 3;
+  const vals = sliced.map(p => p[1]);
+  const ma = vals.map((_, i) => {
+    const from = Math.max(0, i - w + 1);
+    const win = vals.slice(from, i + 1);
+    return win.reduce((a,b) => a + b, 0) / win.length;
+  });
+  return { points: sliced, ma, max: Math.max(...vals, ...ma, 1) };
+}
+
+/* ---- Trend chart drawing ---- */
+function drawTrend(trend) {
+  const W = 760, H = 240;
+  const PAD = { l: 44, r: 20, t: 20, b: 32 };
+  const iW = W - PAD.l - PAD.r;
+  const iH = H - PAD.t - PAD.b;
+  const { points, ma, max } = trend;
+  if (!points.length) return `<svg viewBox="0 0 ${W} ${H}"><text x="${W/2}" y="${H/2}" text-anchor="middle" fill="var(--faint)" font-size="12">No data in range</text></svg>`;
+  const xStep = points.length > 1 ? iW / (points.length - 1) : 0;
+  const yScale = v => PAD.t + iH - (v / max) * iH;
+  const xAt = i => PAD.l + i * xStep;
+  let grid = '';
+  for (let f = 0; f <= 1; f += 0.25) {
+    const y = PAD.t + iH * (1 - f);
+    const v = Math.round(max * f);
+    grid += `<line x1="${PAD.l}" y1="${y}" x2="${W-PAD.r}" y2="${y}" stroke="var(--border)" stroke-width="0.5"/>
+             <text x="${PAD.l-6}" y="${y+3}" text-anchor="end" fill="var(--faint)" font-size="9" font-family="var(--font-mono)">${v}</text>`;
+  }
+  const linePts = points.map((p,i) => `${xAt(i)},${yScale(p[1])}`).join(' ');
+  const dailyLine = `<polyline points="${linePts}" fill="none" stroke="var(--brand-soft)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  const dots = points.map((p,i) => `<circle cx="${xAt(i)}" cy="${yScale(p[1])}" r="2.5" fill="var(--brand-soft)"/>`).join('');
+  const maPts = ma.map((v,i) => `${xAt(i)},${yScale(v)}`).join(' ');
+  const maLine = `<polyline points="${maPts}" fill="none" stroke="var(--warm)" stroke-width="2" stroke-dasharray="4,3" stroke-linejoin="round"/>`;
+  const labelN = Math.max(1, Math.ceil(points.length / 6));
+  const xLabels = points.map((p,i) => {
+    if (i % labelN !== 0 && i !== points.length - 1) return '';
+    return `<text x="${xAt(i)}" y="${H-10}" text-anchor="middle" fill="var(--faint)" font-size="9" font-family="var(--font-mono)">${fmtDateShort(new Date(p[0] + 'T00:00:00'))}</text>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${grid}${dailyLine}${dots}${maLine}${xLabels}</svg>`;
+}
+
+/* ---- Donut ---- */
+function drawDonut(data, palette) {
+  const total = data.reduce((s,d) => s + d.value, 0);
+  if (total === 0) return { svg: '<svg viewBox="0 0 42 42"></svg>', legend: [], total: 0 };
+  let offset = 25;
+  const circles = data.map((d, i) => {
+    const share = d.value / total * 100;
+    const dash = share.toFixed(2) + ' ' + (100 - share).toFixed(2);
+    const c = `<circle cx="21" cy="21" r="15.915" fill="none" stroke="${palette[i % palette.length]}" stroke-width="6" stroke-dasharray="${dash}" stroke-dashoffset="${(-offset + 25).toFixed(2)}" transform="rotate(-90 21 21)"/>`;
+    offset += share;
+    return c;
+  }).join('');
+  const svg = `<svg viewBox="0 0 42 42"><circle cx="21" cy="21" r="15.915" fill="none" stroke="var(--surface-2)" stroke-width="6"/>${circles}</svg>`;
+  const legend = data.map((d, i) => ({ name: d.name, value: d.value, pct: pct(d.value, total), color: palette[i % palette.length] }));
+  return { svg, legend, total };
+}
+
+/* ---- Channel performance (table) ---- */
+function computeChannelPerf(data) {
+  const channels = [...new Set(data.map(channelOf))];
+  const bucket = sub => ({
+    approved: sub.filter(r => APPROVED.includes(r.status)).length,
+    rejected: sub.filter(r => REJECTED.includes(r.status)).length,
+    pending: sub.filter(r => PENDING.includes(r.status)).length
+  });
+  const rows = channels.map(ch => {
+    const sub = data.filter(r => channelOf(r) === ch);
+    const b = bucket(sub);
+    return { channel: ch, total: sub.length, ...b, conv: pct(b.approved, sub.length) };
+  }).sort((a,b) => b.total - a.total);
+  const tb = bucket(data);
+  return { rows, total: { channel: 'Total', total: data.length, ...tb, conv: pct(tb.approved, data.length) } };
+}
+
+/* ---- Last 5 Days — Signup Source Performance ---- */
+function computeLast5Days(data, ref) {
+  const days = [];
+  for (let i = 0; i < 5; i++) days.push(startOfDay(addDays(ref, -i)));
+  const rows = days.map(d => {
+    const next = addDays(d, 1);
+    const sub = data.filter(r => r.acquisition_date >= d && r.acquisition_date < next);
+    const dsu = sub.filter(r => channelOf(r) === 'Digital Signup').length;
+    const promoter = sub.filter(r => channelOf(r) === 'Promoter').length;
+    return { date: d, dsu, promoter, total: dsu + promoter };
+  });
+  const totals = rows.reduce((a, r) => ({ dsu: a.dsu + r.dsu, promoter: a.promoter + r.promoter, total: a.total + r.total }), { dsu: 0, promoter: 0, total: 0 });
+  return { rows, totals };
+}
+
+/* ---- Render page 1 ---- */
+function renderPage1() {
+  const data = applyFilters(state.raw);
+  const kpi = computeKPIs(data, state.refDate);
+
+  $('page-1-content').innerHTML = `
+    <section class="kpis">
+      <div class="kpi"><div class="klabel">👥 Total Signups</div><div class="kvalue">${fmt(kpi.total)}</div><div class="kdelta flat">all applicants</div></div>
+      <div class="kpi"><div class="klabel">📆 Today</div><div class="kvalue">${fmt(kpi.today)}</div><div class="kdelta ${kpi.todayDelta>=0?'up':'down'}">${fmtDelta(kpi.todayDelta)} vs yest.</div></div>
+      <div class="kpi"><div class="klabel">📊 This Week</div><div class="kvalue">${fmt(kpi.week)}</div><div class="kdelta ${kpi.weekDelta>=0?'up':'down'}">${fmtDelta(kpi.weekDelta)} WoW</div></div>
+      <div class="kpi"><div class="klabel">🗓 This Month</div><div class="kvalue">${fmt(kpi.month)}</div><div class="kdelta ${kpi.monthDelta>=0?'up':'down'}">${fmtDelta(kpi.monthDelta)} MoM</div></div>
+      <div class="kpi success"><div class="klabel">✓ Approved</div><div class="kvalue">${fmt(kpi.approved)}</div><div class="kdelta flat">${fmtPct(kpi.approvedPct)} of total</div></div>
+      <div class="kpi rose"><div class="klabel">✗ Rejected</div><div class="kvalue">${fmt(kpi.rejected)}</div><div class="kdelta flat">${fmtPct(kpi.rejectedPct)} of total</div></div>
+      <div class="kpi warm"><div class="klabel">⏳ Pending</div><div class="kvalue">${fmt(kpi.pending)}</div><div class="kdelta flat">${fmtPct(kpi.pendingPct)} of total</div></div>
+      <div class="kpi purple"><div class="klabel">📈 Conversion</div><div class="kvalue">${fmtPct(kpi.convRate)}</div><div class="kdelta ${kpi.convDelta>=0?'up':'down'}">${fmtDelta(kpi.convDelta)} vs last mo.</div></div>
+    </section>
+
+    <section class="row rA">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Daily Signups Trend</h3>
+          <div class="tabs" id="trend-tabs">
+            <button class="tab ${state.trendGranularity==='daily'?'on':''}" data-g="daily">Daily</button>
+            <button class="tab ${state.trendGranularity==='weekly'?'on':''}" data-g="weekly">Weekly</button>
+            <button class="tab ${state.trendGranularity==='monthly'?'on':''}" data-g="monthly">Monthly</button>
+          </div>
+        </div>
+        <div class="chart-area">${drawTrend(computeTrend(data, state.trendGranularity, state.refDate))}</div>
+        <div class="chart-legend">
+          <span class="lg"><span class="sw" style="background:var(--brand-soft)"></span>Signups</span>
+          <span class="lg"><span class="sw" style="background:var(--warm); background:repeating-linear-gradient(90deg,var(--warm),var(--warm) 4px,transparent 4px,transparent 7px)"></span>Moving Avg</span>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>Signup Funnel</h3><span class="pmeta">by status</span></div>
+        <div class="funnel">
+          ${computeFunnel(data).map(f => `
+            <div class="funnel-row">
+              <span class="name">${f.name}</span>
+              <div class="bar-wrap"><div class="bar" style="width:${f.width.toFixed(1)}%;background:${f.color}"></div></div>
+              <span class="count">${fmt(f.count)}</span>
+              <span class="pct">${fmtPct(f.pctOfTotal)}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+    </section>
+
+    <section class="row rB">
+      ${renderChannelDonut(data)}
+      ${renderStatusDonut(data)}
+    </section>
+
+    <section class="row rC">
+      ${renderChannelPerfTable(data)}
+      ${renderServiceBars(data)}
+    </section>
+
+    <section class="row rD">
+      ${renderLocationBars(data)}
+      ${renderLast5Days(data)}
+    </section>
+  `;
+
+  // Trend toggle
+  document.querySelectorAll('#trend-tabs .tab').forEach(btn => btn.addEventListener('click', e => {
+    state.trendGranularity = e.target.dataset.g;
+    renderPage1();
+  }));
+}
+
+function renderChannelDonut(data) {
+  const chanData = groupBy(data, channelOf).map(([n,v]) => ({ name: n, value: v }));
+  const palette = ['#3b82f6', '#8b5cf6', '#14b8a6'];
+  const d = drawDonut(chanData, palette);
+  return `<div class="panel">
+    <div class="panel-head"><h3>Signups by Channel</h3></div>
+    <div class="donut-wrap">
+      <div class="donut">${d.svg}<div class="donut-center"><div class="dv">${fmt(d.total)}</div><div class="dl">Total</div></div></div>
+      <div class="donut-legend">
+        ${d.legend.map(l => `<div class="lrow"><span class="sw" style="background:${l.color}"></span><span class="nm">${l.name}</span><span class="ct">${fmt(l.value)}</span><span class="pc">${fmtPct(l.pct)}</span></div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderStatusDonut(data) {
+  const statusData = groupBy(data, r => r.status || 'Unknown').map(([n,v]) => ({ name: n, value: v }));
+  const palette = ['#581189', '#f43f5e', '#f59e0b', '#14b8a6', '#7c3aed', '#06b6d4', '#ec4899', '#10b981', '#eab308', '#a78bfa', '#78716c'];
+  const d = drawDonut(statusData, palette);
+  return `<div class="panel">
+    <div class="panel-head"><h3>Signups by Status</h3></div>
+    <div class="donut-wrap">
+      <div class="donut">${d.svg}<div class="donut-center"><div class="dv">${fmt(d.total)}</div><div class="dl">Total</div></div></div>
+      <div class="donut-legend">
+        ${d.legend.map(l => `<div class="lrow"><span class="sw" style="background:${l.color}"></span><span class="nm">${l.name}</span><span class="ct">${fmt(l.value)}</span><span class="pc">${fmtPct(l.pct)}</span></div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderChannelPerfTable(data) {
+  const cp = computeChannelPerf(data);
+  const convClass = c => c >= 40 ? 'conv-high' : c >= 20 ? 'conv-mid' : 'conv-low';
+  return `<div class="panel">
+    <div class="panel-head"><h3>Channel Performance</h3><span class="pmeta">Approved = ${APPROVED.join(' + ')}</span></div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Channel</th><th class="num">Signups</th><th class="num">Approved</th><th class="num">Rejected</th><th class="num">Pending</th><th class="num">Conv. Rate</th></tr></thead>
+        <tbody>
+          ${cp.rows.map(r => `<tr>
+            <td class="name">${r.channel}</td>
+            <td class="num">${fmt(r.total)}</td>
+            <td class="num">${fmt(r.approved)}</td>
+            <td class="num">${fmt(r.rejected)}</td>
+            <td class="num">${fmt(r.pending)}</td>
+            <td class="num"><span class="${convClass(r.conv)}">${fmtPct(r.conv)}</span></td>
+          </tr>`).join('')}
+          <tr class="total">
+            <td class="name">Total</td>
+            <td class="num">${fmt(cp.total.total)}</td>
+            <td class="num">${fmt(cp.total.approved)}</td>
+            <td class="num">${fmt(cp.total.rejected)}</td>
+            <td class="num">${fmt(cp.total.pending)}</td>
+            <td class="num"><span class="${convClass(cp.total.conv)}">${fmtPct(cp.total.conv)}</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function renderServiceBars(data) {
+  const svcData = groupBy(data.filter(r => r.vehicle_service && r.vehicle_service !== 'NA' && r.vehicle_service !== 'Unknown'), r => r.vehicle_service);
+  const max = Math.max(...svcData.map(d => d[1]), 1);
+  const total = data.length;
+  return `<div class="panel">
+    <div class="panel-head"><h3>Service Type</h3><span class="pmeta">vehicle_service_name</span></div>
+    <div class="hbars">
+      ${svcData.length ? svcData.map(([n,v]) => `
+        <div class="hbar-row">
+          <span class="name">${n}</span>
+          <div class="bar-wrap"><div class="bar" style="width:${(v/max*100).toFixed(1)}%"></div></div>
+          <span class="count">${fmt(v)}</span>
+          <span class="pct">${fmtPct(pct(v, total))}</span>
+        </div>`).join('') : '<div style="color:var(--faint);text-align:center;padding:20px;font-size:11px;">No service data available</div>'}
+    </div>
+  </div>`;
+}
+
+function renderLocationBars(data) {
+  // Fleet Data has no clean location column — show vehicle_type as proxy (Private Car etc.)
+  const vehData = groupBy(data.filter(r => r.vehicle_type && r.vehicle_type !== 'NA' && r.vehicle_type !== 'Unknown'), r => r.vehicle_type);
+  const max = Math.max(...vehData.map(d => d[1]), 1);
+  const total = data.length;
+  return `<div class="panel">
+    <div class="panel-head"><h3>Vehicle Type</h3><span class="pmeta">Private Car vs Taxi etc.</span></div>
+    <div class="hbars">
+      ${vehData.length ? vehData.map(([n,v]) => `
+        <div class="hbar-row">
+          <span class="name">${n}</span>
+          <div class="bar-wrap"><div class="bar" style="width:${(v/max*100).toFixed(1)}%"></div></div>
+          <span class="count">${fmt(v)}</span>
+          <span class="pct">${fmtPct(pct(v, total))}</span>
+        </div>`).join('') : '<div style="color:var(--faint);text-align:center;padding:20px;font-size:11px;">No vehicle_type data</div>'}
+    </div>
+  </div>`;
+}
+
+function renderLast5Days(data) {
+  const l5 = computeLast5Days(state.raw, state.refDate); // uses raw, not filtered — stable table
+  return `<div class="panel" style="border:1px solid var(--brand-soft); box-shadow:0 4px 16px rgba(88,17,137,0.14), var(--shadow-sm); position:relative;">
+    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--brand),var(--brand-soft));border-radius:10px 10px 0 0;"></div>
+    <div class="panel-head"><h3 style="color:var(--brand)">Last 5 Days — Signup Source Performance</h3><span class="pmeta">auto-rolling</span></div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Date</th><th class="num">Digital (DSU)</th><th class="num">Promoter</th><th class="num">Total Signups</th></tr></thead>
+        <tbody>
+          ${l5.rows.map(r => `<tr><td class="name">${fmtDay(r.date)}</td><td class="num">${fmt(r.dsu)}</td><td class="num">${fmt(r.promoter)}</td><td class="num"><strong>${fmt(r.total)}</strong></td></tr>`).join('')}
+          <tr class="total"><td class="name">Total</td><td class="num">${fmt(l5.totals.dsu)}</td><td class="num">${fmt(l5.totals.promoter)}</td><td class="num">${fmt(l5.totals.total)}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+/* ---- Filter bar ---- */
+function renderFilterBar() {
+  const uniq = (arr) => [...new Set(arr)].filter(Boolean).filter(x => x !== 'NA').sort();
+  $('filterbar-container').innerHTML = `
+    <div class="filterbar">
+      <div class="fitem"><div class="flabel">Date Range</div>
+        <select id="f-date">
+          <option value="all">All time</option>
+          <option value="7d">Last 7 days</option>
+          <option value="30d">Last 30 days</option>
+          <option value="90d">Last 90 days</option>
+          <option value="month">This month</option>
+          <option value="last_month">Last month</option>
+        </select></div>
+      <div class="fitem"><div class="flabel">Channel</div>
+        <select id="f-channel"><option value="all">All</option>${uniq(state.raw.map(channelOf)).map(o => `<option value="${o}">${o}</option>`).join('')}</select></div>
+      <div class="fitem"><div class="flabel">Status</div>
+        <select id="f-status"><option value="all">All</option>${uniq(state.raw.map(r => r.status)).map(o => `<option value="${o}">${o}</option>`).join('')}</select></div>
+      <div class="fitem"><div class="flabel">Service</div>
+        <select id="f-service"><option value="all">All</option>${uniq(state.raw.map(r => r.vehicle_service)).map(o => `<option value="${o}">${o}</option>`).join('')}</select></div>
+      <div class="fitem"><div class="flabel">Vehicle Type</div>
+        <select id="f-vehicle"><option value="all">All</option>${uniq(state.raw.map(r => r.vehicle_type)).map(o => `<option value="${o}">${o}</option>`).join('')}</select></div>
+      <div class="fitem"><div class="flabel">Recruiter / Promoter</div>
+        <select id="f-recruiter"><option value="all">All</option>${uniq(state.raw.map(r => r.recruiter_name)).map(o => `<option value="${o}">${o}</option>`).join('')}</select></div>
+      <div class="reset-wrap"><button class="reset-btn" id="reset-btn">↺ Reset</button></div>
+    </div>
+  `;
+  const bind = (id, key) => $(id).addEventListener('change', e => { state.filters[key] = e.target.value; renderActive(); });
+  bind('f-date', 'dateRange');
+  bind('f-channel', 'channel');
+  bind('f-status', 'status');
+  bind('f-service', 'service');
+  bind('f-vehicle', 'vehicle');
+  bind('f-recruiter', 'recruiter');
+  $('reset-btn').addEventListener('click', () => {
+    state.filters = { dateRange: 'all', channel: 'all', status: 'all', vehicle: 'all', service: 'all', recruiter: 'all' };
+    ['f-date','f-channel','f-status','f-service','f-vehicle','f-recruiter'].forEach(id => $(id).value = 'all');
+    renderActive();
+  });
+}
+
+function renderActive() {
+  if (state.activePage === '1') renderPage1();
+  // Pages 2, 3 are placeholders for now — rendered in HTML.
+  const maxUpd = state.raw.reduce((m, r) => {
+    const d = r.approval_date || r.registration_date || r.acquisition_date;
+    return d && d > m ? d : m;
+  }, new Date(0));
+  $('last-updated').textContent = 'Last Updated · ' + maxUpd.toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+/* ---- Page switch ---- */
+document.querySelectorAll('.pagenav .nav-item').forEach(btn => btn.addEventListener('click', e => {
+  const p = e.target.dataset.page;
+  state.activePage = p;
+  document.querySelectorAll('.pagenav .nav-item').forEach(b => b.classList.toggle('active', b.dataset.page === p));
+  document.querySelectorAll('.page').forEach(sec => sec.hidden = sec.id !== 'page-' + p);
+  renderActive();
+}));
+
+/* Theme toggle */
+$('theme-tog').addEventListener('click', () => {
+  const r = document.documentElement;
+  const cur = r.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : cur === 'light' ? 'dark' : (matchMedia('(prefers-color-scheme: dark)').matches ? 'light' : 'dark');
+  r.setAttribute('data-theme', next);
+});
+
+/* Refresh */
+async function refreshData() {
+  const btn = $('refresh-btn');
+  if (btn) { btn.classList.add('loading'); btn.disabled = true; }
+  try {
+    const raw = await loadData();
+    state.raw = raw;
+    state.refDate = raw.reduce((m, r) => r.acquisition_date > m ? r.acquisition_date : m, new Date(0));
+    renderFilterBar();
+    renderActive();
+  } catch (e) {
+    console.error('Refresh failed:', e);
+  } finally {
+    if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
+  }
+}
+setInterval(refreshData, AUTO_REFRESH_MS);
+$('refresh-btn').addEventListener('click', refreshData);
+
+/* ---- BOOT ---- */
+(async function boot() {
+  try {
+    const raw = await loadData();
+    state.raw = raw;
+    state.refDate = raw.reduce((m, r) => r.acquisition_date > m ? r.acquisition_date : m, new Date(0));
+    renderFilterBar();
+    renderActive();
+  } catch (e) {
+    document.getElementById('page-1-content').innerHTML = `<div class="err">Failed to load: ${e.message}</div>`;
+    console.error(e);
+  }
+})();
+</script>
