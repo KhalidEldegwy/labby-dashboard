@@ -7,7 +7,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/litepicker.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/plugins/ranges.js"></script>
 <style>
-  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.32 (hide internal stats line from Top Promoters poster) ===== */
+  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.34 (Remember me checkbox on login) ===== */
   :root {
     --bg: #f6f3fb;
     --surface: #ffffff;
@@ -544,7 +544,7 @@
     </nav>
     <div class="sidebar-footer">
       <div class="live-row"><span class="live-dot"></span>Live from Google Sheet</div>
-      <div class="ver" id="footer-ver">v31.5.32 · Cleaner poster</div>
+      <div class="ver" id="footer-ver">v31.5.34 · Remember me</div>
       <div id="footer-user" style="font-size:10px;color:var(--sidebar-muted);margin-top:4px"></div>
     </div>
   </aside>
@@ -6015,10 +6015,13 @@ function showLoginScreen(message) {
       <input type="text" id="login-username" autocomplete="username" placeholder="e.g. volt" autofocus>
       <label>Password</label>
       <input type="password" id="login-password" autocomplete="current-password">
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;margin:10px 0;cursor:pointer;color:var(--fg-soft)">
+        <input type="checkbox" id="login-remember" style="width:14px;height:14px;cursor:pointer">
+        <span>Remember me on this device</span>
+      </label>
       <button id="login-btn">Sign in</button>
       ${message ? '<div class="login-err">' + message + '</div>' : ''}
       <div id="login-err" style="display:none"></div>
-      <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:20px">First time? Default admin is <code>volt</code> / <code>labby2026</code></div>
     </div>
   `;
   document.body.appendChild(div);
@@ -6027,6 +6030,16 @@ function showLoginScreen(message) {
   const pw = document.getElementById('login-password');
   const urlInput = document.getElementById('login-backend-url');
   const err = document.getElementById('login-err');
+  const remember = document.getElementById('login-remember');
+  // v31.5.34 — Remember me: pre-fill from localStorage if the user previously opted in
+  try {
+    const saved = JSON.parse(localStorage.getItem('labby_login_remember_v1') || 'null');
+    if (saved && saved.u && saved.p) {
+      if (un) un.value = saved.u;
+      if (pw) pw.value = saved.p;
+      if (remember) remember.checked = true;
+    }
+  } catch(e) {}
   if (!btn) return;
   const submit = async () => {
     const u = un.value.trim();
@@ -6043,6 +6056,14 @@ function showLoginScreen(message) {
     err.style.display = 'none';
     try {
       await doLogin(u, p);
+      // v31.5.34 — honor Remember me
+      try {
+        if (remember && remember.checked) {
+          localStorage.setItem('labby_login_remember_v1', JSON.stringify({ u: u, p: p }));
+        } else {
+          localStorage.removeItem('labby_login_remember_v1');
+        }
+      } catch(e) {}
       if (div.remove) div.remove();
       updateLockIcons();
       await syncFromBackend();
