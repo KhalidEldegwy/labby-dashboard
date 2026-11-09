@@ -7,7 +7,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/litepicker.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/plugins/ranges.js"></script>
 <style>
-  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.36 (Activity Matrix shows ALL promoters + silent indicator) ===== */
+  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.37 (new Suppliers page + flat-rate scheme, excluded from Promoter calcs) ===== */
   :root {
     --bg: #f6f3fb;
     --surface: #ffffff;
@@ -592,11 +592,12 @@
       <button class="nav-item" data-page="4"><span class="ico">💰</span><span style="flex:1">Promoter Payments</span><span class="num" id="nav-lock-4">4</span></button>
       <button class="nav-item" data-page="6"><span class="ico">💵</span><span style="flex:1">Quick Pay</span><span class="num" id="nav-lock-6">6</span></button>
       <button class="nav-item" data-page="7"><span class="ico">🎯</span><span style="flex:1">Supply Team Performance</span><span class="num" id="nav-lock-7">7</span></button>
+      <button class="nav-item" data-page="8"><span class="ico">🏢</span><span style="flex:1">Suppliers</span><span class="num" id="nav-lock-8">8</span></button>
       <button class="nav-item" data-page="5"><span class="ico">⚙️</span><span style="flex:1">Settings</span><span class="num" id="nav-lock-5">5</span></button>
     </nav>
     <div class="sidebar-footer">
       <div class="live-row"><span class="live-dot"></span>Live from Google Sheet</div>
-      <div class="ver" id="footer-ver">v31.5.36 · All promoters visible</div>
+      <div class="ver" id="footer-ver">v31.5.37 · Suppliers page</div>
       <div id="footer-user" style="font-size:10px;color:var(--sidebar-muted);margin-top:4px"></div>
     </div>
   </aside>
@@ -675,6 +676,14 @@
         <div id="page-7-content"><div class="loading">Loading…</div></div>
       </section>
 
+      <section id="page-8" class="page" hidden>
+        <div class="pagetitle">
+          <h2>🏢 Suppliers</h2>
+          <p>External suppliers tracked separately from promoters. Flat-rate commission per approved captain.</p>
+        </div>
+        <div id="page-8-content"><div class="loading">Loading…</div></div>
+      </section>
+
       <div id="pay-modal-mount"></div>
       <div id="chart-tooltip"></div>
     </div>
@@ -737,7 +746,16 @@ const state = {
     drvOn: true,
     drvRate: 2.5,
     drvActivation: 2,
-    drvPatterns: '(driver),(driver promoter)'  // comma-separated, case-insensitive match on recruiter_name
+    drvPatterns: '(driver),(driver promoter)',  // comma-separated, case-insensitive match on recruiter_name
+    /* v31.5.37 — Supplier scheme (flat rate per APPROVED captain; separate from promoters) */
+    suppliers: {
+      ratePerApproved: 4,
+      list: [
+        { id: '16032786', name: 'مباشر 1' },
+        { id: '46276855', name: 'مباشر 2' },
+        { id: '97556092', name: 'مباشر 3' }
+      ]
+    }
   },
   paymentFilters: { scheme: 'all', cycle: 'all', cycles: [], search: '' },  // v31.5.23 cycles=[] means all
   paymentLog: (function(){ try { return JSON.parse(localStorage.getItem('labby_payment_log_v1') || '[]'); } catch(e) { return []; } })(),
@@ -786,6 +804,30 @@ function fmtDateShort(d){return d.toLocaleDateString('en-US',{month:'short',day:
 function fmtDay(d){return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
 const $ = id => document.getElementById(id);
 const channelOf = r => r.lead_source === 'Digital Lead' ? 'Digital Signup' : r.lead_source || 'Unknown';
+
+/* v31.5.37 — Supplier helpers. Suppliers are a subset of Promoter channel but handled separately. */
+function supplierList() {
+  return (state.payments && state.payments.suppliers && Array.isArray(state.payments.suppliers.list))
+    ? state.payments.suppliers.list : [];
+}
+function supplierRate() {
+  const v = state.payments && state.payments.suppliers && state.payments.suppliers.ratePerApproved;
+  return (typeof v === 'number' && v >= 0) ? v : 4;
+}
+function isSupplierId(id) {
+  if (!id) return false;
+  const want = String(id).trim();
+  return supplierList().some(s => String(s.id).trim() === want);
+}
+function isSupplierName(name) {
+  if (!name) return false;
+  const want = String(name).trim();
+  return supplierList().some(s => String(s.name).trim() === want);
+}
+function isSupplier(r) {
+  if (!r) return false;
+  return isSupplierId(r.recruiter_id) || isSupplierName(r.recruiter_name);
+}
 const convClass = c => c >= 40 ? 'conv-high' : c >= 20 ? 'conv-mid' : 'conv-low';
 
 /* ---- CSV ---- */
@@ -1577,7 +1619,7 @@ function renderConversionBySource(digital, promoter) {
 function renderPage3() {
   const data = applyFilters(state.raw);
   // Only real promoters: lead_source === 'Promoter' with a non-blank recruiter_name
-  const promoterRecords = data.filter(r => channelOf(r) === 'Promoter' && r.recruiter_name && r.recruiter_name !== 'Digital Lead');
+  const promoterRecords = data.filter(r => channelOf(r) === 'Promoter' && r.recruiter_name && r.recruiter_name !== 'Digital Lead' && !isSupplier(r));  // v31.5.37 exclude suppliers
 
   // Aggregate by promoter name
   const byPromoter = new Map();
@@ -1789,6 +1831,7 @@ function renderPromoterActivityMatrix() {
     for (const r of (state.raw || [])) {
       if (channelOf(r) !== 'Promoter') continue;
       if (!r.recruiter_name || r.recruiter_name === 'Digital Lead') continue;
+      if (isSupplier(r)) continue;  // v31.5.37 exclude suppliers
       const name = r.recruiter_name.trim();
       if (!byPromoter.has(name)) {
         byPromoter.set(name, { name, recruiter_id: '', byDate: new Map(), total: 0, daysWorked: 0, hasEverWorked: false });
@@ -2363,7 +2406,7 @@ function isDriverPromoter(name) {
 
 function computePromoterPayments(data) {
   const promoterRecords = data.filter(r =>
-    channelOf(r) === 'Promoter' && r.recruiter_name && r.recruiter_name !== 'Digital Lead'
+    channelOf(r) === 'Promoter' && r.recruiter_name && r.recruiter_name !== 'Digital Lead' && !isSupplier(r)  // v31.5.37 exclude suppliers
   );
   const byPromoter = new Map();
   for (const r of promoterRecords) {
@@ -4646,6 +4689,7 @@ function openTopPromotersPoster() {
     const promoterRecords = (state.raw || []).filter(r => {
       if (channelOf(r) !== 'Promoter') return false;
       if (!r.recruiter_name || r.recruiter_name === 'Digital Lead') return false;
+      if (isSupplier(r)) return false;  // v31.5.37 exclude suppliers
       if (!r.acquisition_date) return false;
       return r.acquisition_date >= fromDt && r.acquisition_date <= toDt;
     });
@@ -4900,7 +4944,7 @@ function renderPage5() {
         ${state.users.map(u => {
           const paStr = String(u.pageAccess || '1,2,3,4,5');
           const paSet = new Set(paStr.split(',').map(s => s.trim()));
-          const pageLabels = [['1','📊'],['2','🔀'],['3','🏆'],['4','💰'],['6','💵'],['7','📞']];
+          const pageLabels = [['1','📊'],['2','🔀'],['3','🏆'],['4','💰'],['6','💵'],['7','📞'],['8','🏢']];
           return `
           <div class="user-row" style="grid-template-columns:1fr 95px 95px 1fr auto;align-items:start;gap:10px;padding:12px">
             <div><div class="uname">${u.username}</div><div class="dname">${u.displayName || '—'}</div>
@@ -6039,6 +6083,221 @@ async function renderPage7() {
   }));
 }
 
+/* ============================================================
+   v31.5.37 — PAGE 8: Suppliers
+   Separate from Promoters. Flat-rate commission on APPROVED captains.
+   Admin can edit supplier list and rate in a settings block.
+   ============================================================ */
+function renderPage8() {
+  const data = state.raw || [];
+  const isAdmin = state.session && state.session.role === 'admin';
+  const money = v => '$' + Number(v || 0).toFixed(2);
+  const fmt = v => (v == null ? '—' : v.toLocaleString('en-US'));
+
+  // Build per-supplier stats from ALL raw records (no date filter here — details section has its own)
+  const sups = supplierList();
+  const rate = supplierRate();
+  const perSupplier = sups.map(s => {
+    const idStr = String(s.id).trim();
+    const nameStr = String(s.name).trim();
+    const rows = data.filter(r => {
+      const rid = String(r.recruiter_id || '').trim();
+      const rn = String(r.recruiter_name || '').trim();
+      return (rid && rid === idStr) || (rn && rn === nameStr);
+    });
+    const stats = statusStats(rows);
+    // Days worked (unique acquisition_date dates across the whole sheet)
+    const dates = new Set();
+    rows.forEach(r => { if (r.acquisition_date) dates.add(fmtDate(r.acquisition_date)); });
+    return {
+      id: s.id,
+      name: s.name,
+      total: stats.total,
+      approved: stats.approved,
+      rejected: stats.rejected,
+      pending: stats.pending,
+      conv: stats.conv,
+      daysWorked: dates.size,
+      owed: stats.approved * rate
+    };
+  });
+
+  // Overall totals
+  const totCaptains = perSupplier.reduce((s,x) => s + x.total, 0);
+  const totApproved = perSupplier.reduce((s,x) => s + x.approved, 0);
+  const totOwed = perSupplier.reduce((s,x) => s + x.owed, 0);
+  const avgConv = totCaptains > 0 ? (totApproved / totCaptains * 100) : 0;
+  const totDays = perSupplier.reduce((s,x) => Math.max(s, x.daysWorked), 0); // max days (range coverage)
+
+  const mount = document.getElementById('page-8-content');
+  if (!mount) return;
+
+  mount.innerHTML = `
+    <div style="padding:10px 14px;background:linear-gradient(90deg, rgba(88,17,137,0.1), transparent);border-left:3px solid var(--brand);border-radius:0 6px 6px 0;margin-bottom:12px;font-size:12px">
+      <strong style="color:var(--brand)">Flat-rate scheme</strong> · $${rate.toFixed(2)} per APPROVED captain · ${sups.length} supplier${sups.length===1?'':'s'} configured
+    </div>
+
+    <!-- KPI TILES -->
+    <section class="kpis k5">
+      <div class="kpi"><div class="klabel">👥 Total captains</div><div class="kvalue">${fmt(totCaptains)}</div><div class="kdelta flat">across ${sups.length} suppliers</div></div>
+      <div class="kpi"><div class="klabel">✅ Approved</div><div class="kvalue" style="color:var(--success)">${fmt(totApproved)}</div><div class="kdelta flat">in APPROVED bucket</div></div>
+      <div class="kpi"><div class="klabel">📈 Approval rate</div><div class="kvalue" style="color:${avgConv>=70?'var(--success)':avgConv>=40?'var(--warm)':'var(--hot)'}">${avgConv.toFixed(1)}%</div><div class="kdelta flat">approved ÷ total</div></div>
+      <div class="kpi"><div class="klabel">📅 Max days worked</div><div class="kvalue">${fmt(totDays)}</div><div class="kdelta flat">any single supplier</div></div>
+      <div class="kpi"><div class="klabel">💰 Total owed</div><div class="kvalue" style="color:var(--brand)">${money(totOwed)}</div><div class="kdelta flat">${totApproved} × $${rate.toFixed(2)}</div></div>
+    </section>
+
+    <!-- PER-SUPPLIER BREAKDOWN -->
+    <section class="row">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>📊 Per-supplier breakdown</h3>
+          <span class="pmeta">All-time totals from Fleet Data</span>
+        </div>
+        ${sups.length === 0 ? '<div class="empty" style="padding:30px">No suppliers configured. Add one in the Settings section below.</div>' : `
+        <div class="tbl-wrap"><table class="tbl">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Supplier</th>
+                <th>Recruiter ID</th>
+                <th class="num">Total captains</th>
+                <th class="num">Approved</th>
+                <th class="num">Rejected</th>
+                <th class="num">Pending</th>
+                <th class="num">Approval %</th>
+                <th class="num">Days worked</th>
+                <th class="num">Owed</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${perSupplier.map((p, i) => `<tr class="rank-row">
+                <td class="rank">${i+1}</td>
+                <td class="name" style="color:var(--brand);font-weight:600">${p.name}</td>
+                <td style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">${p.id || '—'}</td>
+                <td class="num">${fmt(p.total)}</td>
+                <td class="num" style="color:var(--success);font-weight:600">${fmt(p.approved)}</td>
+                <td class="num" style="color:var(--hot)">${fmt(p.rejected)}</td>
+                <td class="num">${fmt(p.pending)}</td>
+                <td class="num"><span class="${convClass(p.conv)}">${fmtPct(p.conv)}</span></td>
+                <td class="num">${fmt(p.daysWorked)}</td>
+                <td class="num" style="color:var(--brand);font-weight:700">${money(p.owed)}</td>
+              </tr>`).join('')}
+              <tr class="rank-row" style="background:var(--surface-2);border-top:2px solid var(--brand);font-weight:700">
+                <td></td>
+                <td class="name">TOTAL</td>
+                <td></td>
+                <td class="num">${fmt(totCaptains)}</td>
+                <td class="num" style="color:var(--success)">${fmt(totApproved)}</td>
+                <td class="num" style="color:var(--hot)">${fmt(perSupplier.reduce((s,x)=>s+x.rejected,0))}</td>
+                <td class="num">${fmt(perSupplier.reduce((s,x)=>s+x.pending,0))}</td>
+                <td class="num">${avgConv.toFixed(1)}%</td>
+                <td class="num"></td>
+                <td class="num" style="color:var(--brand);font-size:14px">${money(totOwed)}</td>
+              </tr>
+            </tbody>
+        </table></div>`}
+      </div>
+    </section>
+
+    ${isAdmin ? `
+    <!-- ADMIN: SUPPLIER SETTINGS -->
+    <section class="row">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>⚙️ Supplier settings (admin only)</h3>
+          <span class="pmeta">Changes save to the Google Sheet via Apps Script</span>
+        </div>
+
+        <div style="padding:14px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;margin-bottom:14px">
+          <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap">
+            <div class="fitem" style="flex:1;max-width:220px">
+              <div class="flabel">Rate per approved captain ($)</div>
+              <input type="number" id="sup-rate" value="${rate}" min="0" step="0.5" style="padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:5px;font-size:13px;color:var(--fg);font-family:var(--font-mono);width:100%">
+            </div>
+            <button class="btn" id="sup-save-rate" style="background:var(--brand);color:#fff;border-color:var(--brand);height:32px">💾 Save rate</button>
+          </div>
+        </div>
+
+        <div style="margin-bottom:10px;font-size:12px;color:var(--fg-soft);font-weight:600">Current suppliers (${sups.length})</div>
+        <div style="margin-bottom:14px">
+          ${sups.length === 0 ? '<div style="padding:12px;color:var(--muted);font-size:12px">No suppliers yet.</div>' :
+            sups.map((s, i) => `
+              <div style="display:grid;grid-template-columns:28px 1fr 180px auto;gap:10px;align-items:center;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;margin-bottom:5px">
+                <span style="color:var(--muted);font-family:var(--font-mono);font-size:11px">${i+1}.</span>
+                <span style="font-weight:600;color:var(--fg)">${s.name}</span>
+                <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">ID: ${s.id}</span>
+                <button class="btn sup-del" data-i="${i}" style="height:26px;padding:0 10px;font-size:11px;color:var(--hot);border-color:var(--hot)">✕ Remove</button>
+              </div>
+            `).join('')
+          }
+        </div>
+
+        <div style="padding:14px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px">
+          <div style="margin-bottom:8px;font-size:12px;color:var(--fg-soft);font-weight:600">Add a new supplier</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end">
+            <div class="fitem">
+              <div class="flabel">Recruiter ID</div>
+              <input type="text" id="sup-new-id" placeholder="e.g. 16032786" style="padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:5px;font-size:13px;color:var(--fg);font-family:var(--font-mono)">
+            </div>
+            <div class="fitem">
+              <div class="flabel">Display name</div>
+              <input type="text" id="sup-new-name" placeholder="e.g. مباشر 4" style="padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:5px;font-size:13px;color:var(--fg)">
+            </div>
+            <button class="btn" id="sup-add" style="background:var(--brand);color:#fff;border-color:var(--brand);height:32px">+ Add supplier</button>
+          </div>
+        </div>
+
+        <div id="sup-status" style="margin-top:12px;font-size:12px;min-height:16px"></div>
+      </div>
+    </section>
+    ` : ''}
+  `;
+
+  if (isAdmin) {
+    const saveSupplierConfig = async (msg) => {
+      const statusEl = document.getElementById('sup-status');
+      if (statusEl) { statusEl.textContent = '⏳ Saving…'; statusEl.style.color = 'var(--muted)'; }
+      try {
+        await backendPost({ action: 'save_settings', settings: state.payments });
+        if (statusEl) { statusEl.textContent = '✓ ' + msg; statusEl.style.color = 'var(--success)'; }
+        setTimeout(() => renderPage8(), 800);
+      } catch (e) {
+        if (statusEl) { statusEl.textContent = '✗ Save failed: ' + e.message; statusEl.style.color = 'var(--hot)'; }
+      }
+    };
+
+    const rateBtn = document.getElementById('sup-save-rate');
+    if (rateBtn) rateBtn.addEventListener('click', () => {
+      const v = parseFloat(document.getElementById('sup-rate').value);
+      if (isNaN(v) || v < 0) { alert('Rate must be a non-negative number'); return; }
+      state.payments.suppliers.ratePerApproved = v;
+      saveSupplierConfig('Rate saved: $' + v.toFixed(2));
+    });
+
+    const addBtn = document.getElementById('sup-add');
+    if (addBtn) addBtn.addEventListener('click', () => {
+      const idEl = document.getElementById('sup-new-id');
+      const nameEl = document.getElementById('sup-new-name');
+      const id = (idEl.value || '').trim();
+      const name = (nameEl.value || '').trim();
+      if (!id || !name) { alert('Both Recruiter ID and Display name are required.'); return; }
+      const list = state.payments.suppliers.list;
+      if (list.some(s => String(s.id).trim() === id)) { alert('A supplier with that ID already exists.'); return; }
+      list.push({ id, name });
+      saveSupplierConfig('Added: ' + name);
+    });
+
+    document.querySelectorAll('.sup-del').forEach(b => b.addEventListener('click', e => {
+      const i = Number(e.currentTarget.dataset.i);
+      const s = state.payments.suppliers.list[i];
+      if (!s) return;
+      if (!confirm('Remove supplier "' + s.name + '" (ID: ' + s.id + ')?\n\nThey will reappear in the Promoters page next sync.')) return;
+      state.payments.suppliers.list.splice(i, 1);
+      saveSupplierConfig('Removed: ' + s.name);
+    }));
+  }
+}
+
 /* v31.5.28 — All-Hands Report (print to PDF, then upload to Google Drive → open with Slides) */
 function openAllHandsReport(ctx) {
   const money = n => (n==null?'—':n.toLocaleString('en-US'));
@@ -6191,6 +6450,7 @@ function renderActive() {
   else if (state.activePage === '5') renderPage5();
   else if (state.activePage === '6') renderPage6();
   else if (state.activePage === '7') renderPage7();
+  else if (state.activePage === '8') renderPage8();
   const maxUpd = state.raw.reduce((m, r) => {
     const d = r.approval_date || r.registration_date || r.acquisition_date;
     return d && d > m ? d : m;
@@ -6277,7 +6537,7 @@ function pageIsLocked(p) {
 function enforcePageAccess() {
   if (!state.session) return;
   if (hasPageAccess(state.activePage)) return;
-  const firstAllowed = ['1','2','3','4','5','6','7'].find(p => hasPageAccess(p));
+  const firstAllowed = ['1','2','3','4','5','6','7','8'].find(p => hasPageAccess(p));
   if (firstAllowed) {
     state.activePage = firstAllowed;
     document.querySelectorAll('.sidebar-nav .nav-item').forEach(b => b.classList.toggle('active', b.dataset.page === firstAllowed));
