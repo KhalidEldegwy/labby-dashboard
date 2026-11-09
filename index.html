@@ -7,7 +7,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/litepicker.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/plugins/ranges.js"></script>
 <style>
-  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.35 (Promoter Activity Matrix on page 3) ===== */
+  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.36 (Activity Matrix shows ALL promoters + silent indicator) ===== */
   :root {
     --bg: #f6f3fb;
     --surface: #ffffff;
@@ -596,7 +596,7 @@
     </nav>
     <div class="sidebar-footer">
       <div class="live-row"><span class="live-dot"></span>Live from Google Sheet</div>
-      <div class="ver" id="footer-ver">v31.5.35 · Activity matrix</div>
+      <div class="ver" id="footer-ver">v31.5.36 · All promoters visible</div>
       <div id="footer-user" style="font-size:10px;color:var(--sidebar-muted);margin-top:4px"></div>
     </div>
   </aside>
@@ -711,7 +711,7 @@ const state = {
     to: '',    // set on first render to today
     quick: '14d',
     sort: 'signups',   // signups | days | name
-    hideInactive: true
+    hideInactive: false  // v31.5.36 — show all promoters by default so Volt can spot who didn't work
   },
   // v27 — Payments
   payments: {
@@ -1784,26 +1784,24 @@ function renderPromoterActivityMatrix() {
       d = addDays(d, 1);
     }
 
-    // Filter raw data to promoter channel and the date range
-    const rows = (state.raw || []).filter(r => {
-      if (channelOf(r) !== 'Promoter') return false;
-      if (!r.recruiter_name || r.recruiter_name === 'Digital Lead') return false;
-      if (!r.acquisition_date) return false;
-      return r.acquisition_date >= fromDate && r.acquisition_date <= toDate;
-    });
-
-    // Group by promoter → { name, id, byDate: Map(dateKey → count) }
+    // v31.5.36 — Build master list of ALL promoters from entire sheet (so we can show who didn't work in range)
     const byPromoter = new Map();
-    for (const r of rows) {
+    for (const r of (state.raw || [])) {
+      if (channelOf(r) !== 'Promoter') continue;
+      if (!r.recruiter_name || r.recruiter_name === 'Digital Lead') continue;
       const name = r.recruiter_name.trim();
       if (!byPromoter.has(name)) {
-        byPromoter.set(name, { name, recruiter_id: '', byDate: new Map(), total: 0, daysWorked: 0 });
+        byPromoter.set(name, { name, recruiter_id: '', byDate: new Map(), total: 0, daysWorked: 0, hasEverWorked: false });
       }
       const p = byPromoter.get(name);
       if (!p.recruiter_id && r.recruiter_id) p.recruiter_id = r.recruiter_id;
-      const key = fmtDate(r.acquisition_date);
-      p.byDate.set(key, (p.byDate.get(key) || 0) + 1);
-      p.total += 1;
+      p.hasEverWorked = true;
+      // Only count signups INSIDE the chosen range toward the matrix cells
+      if (r.acquisition_date && r.acquisition_date >= fromDate && r.acquisition_date <= toDate) {
+        const key = fmtDate(r.acquisition_date);
+        p.byDate.set(key, (p.byDate.get(key) || 0) + 1);
+        p.total += 1;
+      }
     }
     // Compute days worked
     byPromoter.forEach(p => { p.daysWorked = p.byDate.size; });
@@ -1827,9 +1825,11 @@ function renderPromoterActivityMatrix() {
     });
     const grandTotal = promoters.reduce((s,p) => s + p.total, 0);
 
-    // Update summary line
+    // Update summary line — v31.5.36 split active vs silent
+    const activeCount = promoters.filter(p => p.total > 0).length;
+    const silentCount = promoters.length - activeCount;
     const summary = document.getElementById('pam-summary');
-    if (summary) summary.textContent = dates.length + ' day' + (dates.length===1?'':'s') + ' · ' + promoters.length + ' promoter' + (promoters.length===1?'':'s') + ' · ' + grandTotal + ' signup' + (grandTotal===1?'':'s');
+    if (summary) summary.innerHTML = dates.length + ' day' + (dates.length===1?'':'s') + ' · <span style="color:var(--success);font-weight:600">' + activeCount + ' active</span>' + (silentCount > 0 ? ' · <span style="color:#dc2626;font-weight:600">' + silentCount + ' silent</span>' : '') + ' · ' + grandTotal + ' signup' + (grandTotal===1?'':'s');
 
     // Color level for a count
     const lvlOf = (n) => n <= 0 ? 0 : n <= 2 ? 1 : n <= 4 ? 2 : n <= 7 ? 3 : n <= 10 ? 4 : 5;
@@ -1854,7 +1854,7 @@ function renderPromoterActivityMatrix() {
           </select>
         </div>
         <div class="fitem"><div class="flabel">&nbsp;</div>
-          <label class="pam-cb"><input type="checkbox" id="pam-hide-inactive" ${pm.hideInactive?'checked':''}> Hide inactive promoters</label>
+          <label class="pam-cb"><input type="checkbox" id="pam-hide-inactive" ${pm.hideInactive?'checked':''}> Hide silent (0 signups in range)</label>
         </div>
         <div style="flex:1"></div>
         <button class="btn" id="pam-csv" style="background:var(--brand);color:#fff;border-color:var(--brand);height:30px">⬇ Export CSV</button>
@@ -1875,17 +1875,26 @@ function renderPromoterActivityMatrix() {
             </tr>
           </thead>
           <tbody>
-            ${promoters.length === 0 ? `<tr><td colspan="${dates.length + 3}" style="padding:30px;text-align:center;color:var(--muted)">No promoters with signups in this range.</td></tr>` :
-              promoters.map(p => `<tr>
-                <td class="pam-name-cell"><div class="pam-pname">${p.name}</div>${p.recruiter_id ? `<div class="pam-prid">ID: ${p.recruiter_id}</div>` : ''}</td>
-                <td class="pam-days-cell">${p.daysWorked}<span class="pam-days-sub">of ${dates.length}</span></td>
+            ${promoters.length === 0 ? `<tr><td colspan="${dates.length + 3}" style="padding:30px;text-align:center;color:var(--muted)">No promoters in the data.</td></tr>` :
+              promoters.map(p => {
+                const silent = p.total === 0;
+                return `<tr${silent ? ' style="opacity:0.7"' : ''}>
+                <td class="pam-name-cell">
+                  <div class="pam-pname">
+                    ${silent ? '<span title="No signups in this range" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#dc2626;margin-right:6px;vertical-align:middle"></span>' : '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--success);margin-right:6px;vertical-align:middle"></span>'}
+                    ${p.name}
+                  </div>
+                  ${p.recruiter_id ? `<div class="pam-prid">ID: ${p.recruiter_id}</div>` : ''}
+                </td>
+                <td class="pam-days-cell"${silent ? ' style="color:#dc2626"' : ''}>${p.daysWorked}<span class="pam-days-sub">of ${dates.length}</span></td>
                 ${dates.map(dt => {
                   const key = fmtDate(dt);
                   const n = p.byDate.get(key) || 0;
                   return `<td class="pam-lvl${lvlOf(n)}">${n > 0 ? n : '—'}</td>`;
                 }).join('')}
-                <td class="pam-total-col">${p.total}</td>
-              </tr>`).join('')
+                <td class="pam-total-col"${p.total === 0 ? ' style="color:#dc2626"' : ''}>${p.total}</td>
+              </tr>`;
+              }).join('')
             }
           </tbody>
           ${promoters.length > 0 ? `<tfoot>
