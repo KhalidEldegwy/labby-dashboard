@@ -7,7 +7,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/litepicker.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/plugins/ranges.js"></script>
 <style>
-  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.34 (Remember me checkbox on login) ===== */
+  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.35 (Promoter Activity Matrix on page 3) ===== */
   :root {
     --bg: #f6f3fb;
     --surface: #ffffff;
@@ -524,6 +524,58 @@
   .watchlist-item .wname { font-weight: 500; color: var(--fg); }
   .watchlist-item .wgap { font-family: var(--font-mono); color: var(--brand); font-weight: 600; }
   .watchlist-item .wgain { font-family: var(--font-mono); color: var(--success); font-size: 11px; }
+
+  /* v31.5.35 — Promoter activity matrix */
+  .pam-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 10px; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; }
+  .pam-quick { display: flex; gap: 3px; }
+  .pam-quick .btn { padding: 5px 9px; font-size: 11px; height: 28px; }
+  .pam-quick .btn.on { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .pam-cb { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--fg-soft); cursor: pointer; }
+  .pam-cb input { width: 14px; height: 14px; cursor: pointer; accent-color: var(--brand); }
+  .pam-wrap { overflow: auto; max-height: 560px; border: 1px solid var(--border); border-radius: 8px; position: relative; background: var(--surface); }
+  table.pam { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 11px; }
+  table.pam thead th { background: var(--surface-2); color: var(--fg); padding: 7px 5px; text-align: center; font-weight: 600; font-size: 10px; border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 3; }
+  table.pam thead th.pam-corner, table.pam thead th.pam-days-col { text-align: left; padding: 7px 12px; position: sticky; top: 0; z-index: 4; background: var(--surface-2); border-right: 2px solid var(--border); }
+  table.pam thead th.pam-corner { left: 0; min-width: 200px; }
+  table.pam thead th.pam-days-col { left: 200px; min-width: 72px; text-align: center; padding: 7px 5px; }
+  table.pam thead th .pam-dday { display: block; font-size: 9px; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; font-weight: 500; margin-bottom: 1px; }
+  table.pam thead th .pam-dnum { display: block; font-family: var(--font-mono); font-size: 12px; font-weight: 700; }
+  table.pam thead th.pam-weekend .pam-dday, table.pam thead th.pam-weekend .pam-dnum { color: var(--brand); }
+  table.pam tbody td { padding: 6px 4px; text-align: center; border-bottom: 1px solid var(--border); font-family: var(--font-mono); font-size: 11px; font-weight: 600; min-width: 42px; }
+  table.pam tbody td.pam-name-cell { text-align: left; padding: 6px 12px; font-family: var(--font-sans); background: var(--surface); position: sticky; left: 0; z-index: 2; border-right: 2px solid var(--border); min-width: 200px; }
+  table.pam tbody td.pam-name-cell .pam-pname { font-weight: 600; color: var(--fg); font-size: 12px; }
+  table.pam tbody td.pam-name-cell .pam-prid { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 1px; }
+  table.pam tbody td.pam-days-cell { position: sticky; left: 200px; z-index: 2; background: var(--surface); border-right: 2px solid var(--border); font-weight: 700; color: var(--brand); font-size: 12px; min-width: 72px; }
+  table.pam tbody td.pam-days-cell .pam-days-sub { display: block; font-size: 9px; color: var(--muted); font-weight: 500; margin-top: 1px; text-transform: uppercase; letter-spacing: 0.05em; }
+  table.pam td.pam-lvl0 { background: var(--surface); color: var(--muted); }
+  table.pam td.pam-lvl1 { background: #d8f3dc; color: #0b3a1d; }
+  table.pam td.pam-lvl2 { background: #95d5b2; color: #0b3a1d; }
+  table.pam td.pam-lvl3 { background: #52b788; color: #fff; }
+  table.pam td.pam-lvl4 { background: #2d6a4f; color: #fff; }
+  table.pam td.pam-lvl5 { background: #1b4332; color: #fff; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) table.pam td.pam-lvl0 { background: var(--surface); color: #5c4d73; }
+    :root:not([data-theme="light"]) table.pam td.pam-lvl1 { background: #1e3a2a; color: #86efac; }
+    :root:not([data-theme="light"]) table.pam td.pam-lvl2 { background: #1f5134; color: #bbf7d0; }
+    :root:not([data-theme="light"]) table.pam td.pam-lvl3 { background: #166534; color: #fff; }
+    :root:not([data-theme="light"]) table.pam td.pam-lvl4 { background: #15803d; color: #fff; }
+    :root:not([data-theme="light"]) table.pam td.pam-lvl5 { background: #22c55e; color: #052e16; }
+  }
+  :root[data-theme="dark"] table.pam td.pam-lvl0 { background: var(--surface); color: #5c4d73; }
+  :root[data-theme="dark"] table.pam td.pam-lvl1 { background: #1e3a2a; color: #86efac; }
+  :root[data-theme="dark"] table.pam td.pam-lvl2 { background: #1f5134; color: #bbf7d0; }
+  :root[data-theme="dark"] table.pam td.pam-lvl3 { background: #166534; color: #fff; }
+  :root[data-theme="dark"] table.pam td.pam-lvl4 { background: #15803d; color: #fff; }
+  :root[data-theme="dark"] table.pam td.pam-lvl5 { background: #22c55e; color: #052e16; }
+  table.pam tbody tr:hover td.pam-name-cell, table.pam tbody tr:hover td.pam-days-cell { background: var(--surface-2); }
+  table.pam tbody tr:hover td:not(.pam-name-cell):not(.pam-days-cell) { filter: brightness(1.08); }
+  table.pam tfoot td { padding: 8px 4px; text-align: center; font-family: var(--font-mono); font-size: 11px; font-weight: 700; background: var(--surface-2); border-top: 2px solid var(--brand); color: var(--fg); }
+  table.pam tfoot td.pam-name-cell { text-align: right; padding-right: 14px; font-family: var(--font-sans); position: sticky; left: 0; z-index: 2; background: var(--surface-2); border-right: 2px solid var(--border); }
+  table.pam tfoot td.pam-days-cell { position: sticky; left: 200px; z-index: 2; background: var(--surface-2); border-right: 2px solid var(--border); color: var(--brand); }
+  table.pam td.pam-total-col { background: var(--surface-2) !important; color: var(--brand); font-size: 12px; font-weight: 700; min-width: 60px; }
+  table.pam tfoot td.pam-total-col { font-size: 13px; }
+  .pam-legend { padding: 8px 12px; display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--border); background: var(--surface); flex-wrap: wrap; margin-top: -1px; border-radius: 0 0 8px 8px; }
+  .pam-swatch { display: inline-block; width: 24px; height: 12px; border-radius: 3px; margin: 0 2px; vertical-align: middle; }
 </style>
 
 <div class="shell">
@@ -544,7 +596,7 @@
     </nav>
     <div class="sidebar-footer">
       <div class="live-row"><span class="live-dot"></span>Live from Google Sheet</div>
-      <div class="ver" id="footer-ver">v31.5.34 · Remember me</div>
+      <div class="ver" id="footer-ver">v31.5.35 · Activity matrix</div>
       <div id="footer-user" style="font-size:10px;color:var(--sidebar-muted);margin-top:4px"></div>
     </div>
   </aside>
@@ -653,6 +705,14 @@ const state = {
   p2ConvGranularity: 'daily',
   promoterThreshold: 20,
   promoterSort: 'signups',
+  // v31.5.35 — Promoter activity matrix defaults
+  promoterMatrix: {
+    from: '',  // set on first render to today-13
+    to: '',    // set on first render to today
+    quick: '14d',
+    sort: 'signups',   // signups | days | name
+    hideInactive: true
+  },
   // v27 — Payments
   payments: {
     cutoff: '2026-10-01',
@@ -1651,6 +1711,17 @@ function renderPage3() {
       </table></div>
       <div style="margin-top:12px;font-size:11px;color:var(--muted)">Showing ${allRows.length} of ${activePromoters.length} active promoters · ${allPromoters.length - activePromoters.length} below ${threshold}-signup threshold hidden</div>`}
     </section>
+
+    <!-- v31.5.35 — Promoter Activity Matrix -->
+    <section class="row">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>📅 Promoter Activity Matrix</h3>
+          <span class="pmeta" id="pam-summary">—</span>
+        </div>
+        <div id="pam-section"></div>
+      </div>
+    </section>
   `;
 
   // Bind events
@@ -1666,6 +1737,218 @@ function renderPage3() {
   // v31.5.31 — Top Promoters shareable poster — recomputes from state.raw within chosen date range
   const topBtn = $('p3-top-poster-btn');
   if (topBtn) topBtn.addEventListener('click', () => openTopPromotersPoster());
+  // v31.5.35 — Promoter Activity Matrix section
+  renderPromoterActivityMatrix();
+}
+
+/* ============================================================
+   v31.5.35 — Promoter Activity Matrix
+   Pivot table: promoters (rows) × dates (cols), heatmap cells
+   ============================================================ */
+function renderPromoterActivityMatrix() {
+  const mount = document.getElementById('pam-section');
+  if (!mount) return;
+  const pm = state.promoterMatrix;
+
+  // Default date range on first render — last 14 days ending today
+  if (!pm.from || !pm.to) {
+    const today = new Date();
+    pm.to = fmtDate(today);
+    pm.from = fmtDate(addDays(today, -13));
+  }
+
+  const applyQuick = (q) => {
+    const today = new Date();
+    pm.to = fmtDate(today);
+    if (q === '7d') pm.from = fmtDate(addDays(today, -6));
+    else if (q === '14d') pm.from = fmtDate(addDays(today, -13));
+    else if (q === '30d') pm.from = fmtDate(addDays(today, -29));
+    else if (q === 'mtd') pm.from = fmtDate(new Date(today.getFullYear(), today.getMonth(), 1));
+    else if (q === 'all') pm.from = '2026-01-01';
+    pm.quick = q;
+  };
+
+  const render = () => {
+    const fromDate = new Date(pm.from + 'T00:00:00');
+    const toDate = new Date(pm.to + 'T23:59:59');
+    if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime()) || fromDate > toDate) {
+      mount.innerHTML = `<div class="empty" style="padding:30px">Invalid date range.</div>`;
+      return;
+    }
+
+    // Build the ordered list of dates in the range
+    const dates = [];
+    let d = new Date(fromDate);
+    while (d <= toDate) {
+      dates.push(new Date(d));
+      d = addDays(d, 1);
+    }
+
+    // Filter raw data to promoter channel and the date range
+    const rows = (state.raw || []).filter(r => {
+      if (channelOf(r) !== 'Promoter') return false;
+      if (!r.recruiter_name || r.recruiter_name === 'Digital Lead') return false;
+      if (!r.acquisition_date) return false;
+      return r.acquisition_date >= fromDate && r.acquisition_date <= toDate;
+    });
+
+    // Group by promoter → { name, id, byDate: Map(dateKey → count) }
+    const byPromoter = new Map();
+    for (const r of rows) {
+      const name = r.recruiter_name.trim();
+      if (!byPromoter.has(name)) {
+        byPromoter.set(name, { name, recruiter_id: '', byDate: new Map(), total: 0, daysWorked: 0 });
+      }
+      const p = byPromoter.get(name);
+      if (!p.recruiter_id && r.recruiter_id) p.recruiter_id = r.recruiter_id;
+      const key = fmtDate(r.acquisition_date);
+      p.byDate.set(key, (p.byDate.get(key) || 0) + 1);
+      p.total += 1;
+    }
+    // Compute days worked
+    byPromoter.forEach(p => { p.daysWorked = p.byDate.size; });
+
+    let promoters = [...byPromoter.values()];
+
+    // Hide inactive
+    if (pm.hideInactive) promoters = promoters.filter(p => p.total > 0);
+
+    // Sort
+    if (pm.sort === 'signups') promoters.sort((a,b) => b.total - a.total || a.name.localeCompare(b.name));
+    else if (pm.sort === 'days') promoters.sort((a,b) => b.daysWorked - a.daysWorked || b.total - a.total);
+    else if (pm.sort === 'name') promoters.sort((a,b) => a.name.localeCompare(b.name));
+
+    // Compute daily totals + grand total
+    const dayTotals = dates.map(dt => {
+      const key = fmtDate(dt);
+      let sum = 0;
+      promoters.forEach(p => { sum += (p.byDate.get(key) || 0); });
+      return sum;
+    });
+    const grandTotal = promoters.reduce((s,p) => s + p.total, 0);
+
+    // Update summary line
+    const summary = document.getElementById('pam-summary');
+    if (summary) summary.textContent = dates.length + ' day' + (dates.length===1?'':'s') + ' · ' + promoters.length + ' promoter' + (promoters.length===1?'':'s') + ' · ' + grandTotal + ' signup' + (grandTotal===1?'':'s');
+
+    // Color level for a count
+    const lvlOf = (n) => n <= 0 ? 0 : n <= 2 ? 1 : n <= 4 ? 2 : n <= 7 ? 3 : n <= 10 ? 4 : 5;
+
+    // Format date headers (short)
+    const wdNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+    mount.innerHTML = `
+      <div class="pam-toolbar">
+        <div class="fitem"><div class="flabel">From</div><input type="date" id="pam-from" value="${pm.from}" style="padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--fg);font-family:var(--font-mono)"></div>
+        <div class="fitem"><div class="flabel">To</div><input type="date" id="pam-to" value="${pm.to}" style="padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--fg);font-family:var(--font-mono)"></div>
+        <div class="fitem"><div class="flabel">Quick</div>
+          <div class="pam-quick">
+            ${['7d','14d','30d','mtd','all'].map(q => `<button class="btn pam-q ${pm.quick===q?'on':''}" data-q="${q}">${q==='7d'?'7 days':q==='14d'?'14 days':q==='30d'?'30 days':q==='mtd'?'MTD':'All'}</button>`).join('')}
+          </div>
+        </div>
+        <div class="fitem"><div class="flabel">Sort by</div>
+          <select id="pam-sort" style="padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--fg)">
+            <option value="signups" ${pm.sort==='signups'?'selected':''}>Total signups (high → low)</option>
+            <option value="days" ${pm.sort==='days'?'selected':''}>Days worked (high → low)</option>
+            <option value="name" ${pm.sort==='name'?'selected':''}>Name (A → Z)</option>
+          </select>
+        </div>
+        <div class="fitem"><div class="flabel">&nbsp;</div>
+          <label class="pam-cb"><input type="checkbox" id="pam-hide-inactive" ${pm.hideInactive?'checked':''}> Hide inactive promoters</label>
+        </div>
+        <div style="flex:1"></div>
+        <button class="btn" id="pam-csv" style="background:var(--brand);color:#fff;border-color:var(--brand);height:30px">⬇ Export CSV</button>
+      </div>
+
+      <div class="pam-wrap">
+        <table class="pam">
+          <thead>
+            <tr>
+              <th class="pam-corner">Promoter</th>
+              <th class="pam-days-col">Days<br><span style="font-weight:500;font-size:9px;color:var(--muted)">worked</span></th>
+              ${dates.map(dt => {
+                const wd = dt.getDay();
+                const isFri = wd === 5;
+                return `<th class="${isFri?'pam-weekend':''}"><span class="pam-dday">${wdNames[wd]}</span><span class="pam-dnum">${dt.getDate()}</span></th>`;
+              }).join('')}
+              <th class="pam-total-col">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${promoters.length === 0 ? `<tr><td colspan="${dates.length + 3}" style="padding:30px;text-align:center;color:var(--muted)">No promoters with signups in this range.</td></tr>` :
+              promoters.map(p => `<tr>
+                <td class="pam-name-cell"><div class="pam-pname">${p.name}</div>${p.recruiter_id ? `<div class="pam-prid">ID: ${p.recruiter_id}</div>` : ''}</td>
+                <td class="pam-days-cell">${p.daysWorked}<span class="pam-days-sub">of ${dates.length}</span></td>
+                ${dates.map(dt => {
+                  const key = fmtDate(dt);
+                  const n = p.byDate.get(key) || 0;
+                  return `<td class="pam-lvl${lvlOf(n)}">${n > 0 ? n : '—'}</td>`;
+                }).join('')}
+                <td class="pam-total-col">${p.total}</td>
+              </tr>`).join('')
+            }
+          </tbody>
+          ${promoters.length > 0 ? `<tfoot>
+            <tr>
+              <td class="pam-name-cell">Daily total</td>
+              <td class="pam-days-cell">—</td>
+              ${dayTotals.map(t => `<td>${t > 0 ? t : '—'}</td>`).join('')}
+              <td class="pam-total-col">${grandTotal}</td>
+            </tr>
+          </tfoot>` : ''}
+        </table>
+      </div>
+
+      <div class="pam-legend">
+        <span>Signups per day:</span>
+        <span>0</span><span class="pam-swatch" style="background:var(--surface);border:1px solid var(--border)"></span>
+        <span>1–2</span><span class="pam-swatch" style="background:#d8f3dc"></span>
+        <span>3–4</span><span class="pam-swatch" style="background:#95d5b2"></span>
+        <span>5–7</span><span class="pam-swatch" style="background:#52b788"></span>
+        <span>8–10</span><span class="pam-swatch" style="background:#2d6a4f"></span>
+        <span>11+</span><span class="pam-swatch" style="background:#1b4332"></span>
+        <span style="flex:1"></span>
+        <span style="font-size:10px;color:var(--muted)">💜 Friday highlighted in header</span>
+      </div>
+    `;
+
+    // Bind
+    const fromEl = document.getElementById('pam-from');
+    const toEl = document.getElementById('pam-to');
+    const sortEl = document.getElementById('pam-sort');
+    const hideEl = document.getElementById('pam-hide-inactive');
+    if (fromEl) fromEl.addEventListener('change', e => { pm.from = e.target.value; pm.quick = ''; render(); });
+    if (toEl) toEl.addEventListener('change', e => { pm.to = e.target.value; pm.quick = ''; render(); });
+    if (sortEl) sortEl.addEventListener('change', e => { pm.sort = e.target.value; render(); });
+    if (hideEl) hideEl.addEventListener('change', e => { pm.hideInactive = e.target.checked; render(); });
+    document.querySelectorAll('.pam-q').forEach(b => b.addEventListener('click', e => { applyQuick(e.currentTarget.dataset.q); render(); }));
+    const csvBtn = document.getElementById('pam-csv');
+    if (csvBtn) csvBtn.addEventListener('click', () => {
+      const headerRow = ['Promoter', 'Recruiter ID', 'Days worked', ...dates.map(dt => fmtDate(dt)), 'Total'];
+      const csvRows = [headerRow];
+      promoters.forEach(p => {
+        csvRows.push([
+          p.name, p.recruiter_id || '', p.daysWorked,
+          ...dates.map(dt => p.byDate.get(fmtDate(dt)) || 0),
+          p.total
+        ]);
+      });
+      csvRows.push(['Daily total', '', '', ...dayTotals, grandTotal]);
+      const csv = csvRows.map(row => row.map(c => {
+        const s = String(c == null ? '' : c);
+        return /[,"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      }).join(',')).join('\n');
+      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'labby-promoter-activity-' + pm.from + '_to_' + pm.to + '.csv';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  };
+
+  render();
 }
 
 /* ============================================================
