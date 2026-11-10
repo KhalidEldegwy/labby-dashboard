@@ -7,7 +7,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/litepicker.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/plugins/ranges.js"></script>
 <style>
-  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.37 (new Suppliers page + flat-rate scheme, excluded from Promoter calcs) ===== */
+  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.38 (Treasury Manager approval workflow + overage-reject + treasury role + Page 9) ===== */
   :root {
     --bg: #f6f3fb;
     --surface: #ffffff;
@@ -193,8 +193,9 @@
   .kpis { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; margin-bottom: 10px; }
   .kpis.k6 { grid-template-columns: repeat(6, 1fr); }
   .kpis.k5 { grid-template-columns: repeat(5, 1fr); }
-  @media (max-width: 1400px) { .kpis, .kpis.k6, .kpis.k5 { grid-template-columns: repeat(3, 1fr); } }
-  @media (max-width: 700px) { .kpis, .kpis.k6, .kpis.k5 { grid-template-columns: repeat(2, 1fr); } }
+  .kpis.k4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 1400px) { .kpis, .kpis.k6, .kpis.k5, .kpis.k4 { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 700px) { .kpis, .kpis.k6, .kpis.k5, .kpis.k4 { grid-template-columns: repeat(2, 1fr); } }
   .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 13px 14px 12px; min-width: 0; position: relative; box-shadow: var(--shadow-sm); overflow: hidden; }
   .kpi::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--brand-soft); opacity: 0.5; }
   .kpi.success::before { background: var(--success); }
@@ -593,11 +594,12 @@
       <button class="nav-item" data-page="6"><span class="ico">💵</span><span style="flex:1">Quick Pay</span><span class="num" id="nav-lock-6">6</span></button>
       <button class="nav-item" data-page="7"><span class="ico">🎯</span><span style="flex:1">Supply Team Performance</span><span class="num" id="nav-lock-7">7</span></button>
       <button class="nav-item" data-page="8"><span class="ico">🏢</span><span style="flex:1">Suppliers</span><span class="num" id="nav-lock-8">8</span></button>
+      <button class="nav-item" data-page="9"><span class="ico">🏦</span><span style="flex:1">Treasury Approvals</span><span class="num" id="nav-lock-9">9</span></button>
       <button class="nav-item" data-page="5"><span class="ico">⚙️</span><span style="flex:1">Settings</span><span class="num" id="nav-lock-5">5</span></button>
     </nav>
     <div class="sidebar-footer">
       <div class="live-row"><span class="live-dot"></span>Live from Google Sheet</div>
-      <div class="ver" id="footer-ver">v31.5.37 · Suppliers page</div>
+      <div class="ver" id="footer-ver">v31.5.38 · Treasury approvals</div>
       <div id="footer-user" style="font-size:10px;color:var(--sidebar-muted);margin-top:4px"></div>
     </div>
   </aside>
@@ -684,6 +686,14 @@
         <div id="page-8-content"><div class="loading">Loading…</div></div>
       </section>
 
+      <section id="page-9" class="page" hidden>
+        <div class="pagetitle">
+          <h2>🏦 Treasury Approvals</h2>
+          <p>After the 3-day grace period ends, a cycle enters pending-approval state. Treasury or admin must approve it before payments can flow.</p>
+        </div>
+        <div id="page-9-content"><div class="loading">Loading…</div></div>
+      </section>
+
       <div id="pay-modal-mount"></div>
       <div id="chart-tooltip"></div>
     </div>
@@ -755,7 +765,10 @@ const state = {
         { id: '46276855', name: 'مباشر 2' },
         { id: '97556092', name: 'مباشر 3' }
       ]
-    }
+    },
+    /* v31.5.38 — Treasury-manager cycle approvals. After grace ends, a cycle sits in
+       pending_approval until a user with role 'treasury' or 'admin' approves it. */
+    cycleApprovals: {}  // { 'P01': { by: 'username', byName: 'Display Name', at: 'ISO' }, ... }
   },
   paymentFilters: { scheme: 'all', cycle: 'all', cycles: [], search: '' },  // v31.5.23 cycles=[] means all
   paymentLog: (function(){ try { return JSON.parse(localStorage.getItem('labby_payment_log_v1') || '[]'); } catch(e) { return []; } })(),
@@ -2327,7 +2340,30 @@ function cycleStatus(label) {
   const payDate = cyclePayDate(label);
   if (now <= r.to) return { kind: 'active', from: r.from, to: r.to, payDate: payDate };
   if (now <= payDate) return { kind: 'grace', from: r.from, to: r.to, payDate: payDate };
-  return { kind: 'locked', from: r.from, to: r.to, payDate: payDate };
+  // v31.5.38 — After grace: needs treasury approval before payments can flow
+  if (!isCycleApproved(label)) {
+    return { kind: 'pending_approval', from: r.from, to: r.to, payDate: payDate };
+  }
+  return { kind: 'approved', from: r.from, to: r.to, payDate: payDate, approval: cycleApprovalInfo(label) };
+}
+
+// v31.5.38 — Cycle approval helpers
+function cycleApprovalInfo(label) {
+  const a = state.payments && state.payments.cycleApprovals;
+  return (a && a[label]) || null;
+}
+function isCycleApproved(label) {
+  return !!cycleApprovalInfo(label);
+}
+function canApproveCycles() {
+  if (!state.session) return false;
+  const r = state.session.role;
+  return r === 'treasury' || r === 'admin';
+}
+function cycleIsPayable(label) {
+  const s = cycleStatus(label);
+  if (!s) return true;  // non-cycle rows (REF, BON, OLD without label) stay payable
+  return s.kind === 'approved';
 }
 
 // v31.4 — Smart cycle assignment with grace period
@@ -3113,7 +3149,8 @@ function renderPage4() {
               const payStr = st.payDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
               if (st.kind === 'active') suffix = ' 🟢';
               else if (st.kind === 'grace') suffix = ' 🟡';
-              else suffix = ' 🔒';
+              else if (st.kind === 'pending_approval') suffix = ' ⏳';
+              else suffix = ' ✅';
             }
             const checked = (pf.cycles || []).includes(c);
             return `<label style="display:flex;align-items:center;gap:6px;padding:4px 6px;font-size:12px;cursor:pointer"><input type="checkbox" class="pay-f-cycle-cb" value="${c}" ${checked?'checked':''}> ${c}${rLab ? ' <span style="color:var(--muted);font-size:10px">('+rLab+')</span>' : ''}${suffix}</label>`;
@@ -3144,10 +3181,17 @@ function renderPage4() {
         bgColor = 'var(--warm-tint)'; borderColor = 'var(--warm)'; textColor = 'var(--warm)';
         icon = '🟡'; label = 'GRACE PERIOD';
         extra = `Pay by ${payDateStr} (${daysUntilPay} day${daysUntilPay===1?'':'s'} left). After this date, new approvals auto-move to P${String(Number(pf.cycle.substring(1))+1).padStart(2,'0')}.`;
+      } else if (st.kind === 'pending_approval') {
+        bgColor = '#f3e8ff'; borderColor = 'var(--brand)'; textColor = 'var(--brand)';
+        icon = '⏳'; label = 'PENDING TREASURY APPROVAL';
+        extra = `Grace ended ${payDateStr}. Awaiting approval from Treasury Manager before payments can be logged.`;
       } else {
-        bgColor = 'var(--hot-tint)'; borderColor = 'var(--hot)'; textColor = 'var(--hot)';
-        icon = '🔒'; label = 'LOCKED';
-        extra = `Paid out ${payDateStr}. No new captains can be added to this cycle anymore.`;
+        bgColor = 'var(--surface-2)'; borderColor = 'var(--success)'; textColor = 'var(--success)';
+        icon = '✅'; label = 'APPROVED — PAYABLE';
+        const appr = st.approval;
+        extra = appr
+          ? `Approved by ${appr.byName || appr.by} on ${new Date(appr.at).toLocaleDateString('en-US', { day:'numeric', month:'short', year:'numeric' })}. Payments can be logged.`
+          : `Approved. Payments can be logged.`;
       }
       return `
       <div style="background:${bgColor};border:1px solid ${borderColor};border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:${textColor};display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -3774,12 +3818,15 @@ function _renderPayModal(row, changedByOther, originalRemaining) {
         <div id="pay-rows-wrap" style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;background:var(--surface-2)">
           ${allUnpaid.map((rr, i) => {
             const k = paymentKey(rr);
-            // v31.5.17 — block paying active cycles; v31.5.18 — also flag GRACE / LOCKED
+            // v31.5.38 — cycle lifecycle checks (active / grace / pending_approval / approved)
             const cyStatus = cycleStatus(rr.cycle);
-            const isActive = cyStatus && cyStatus.kind === 'active';
-            const isGrace  = cyStatus && cyStatus.kind === 'grace';
-            const isLocked = cyStatus && cyStatus.kind === 'locked';
-            const isSelected = k === clickedKey && !isActive; // active cycles never pre-checked
+            const isActive  = cyStatus && cyStatus.kind === 'active';
+            const isGrace   = cyStatus && cyStatus.kind === 'grace';
+            const isPending = cyStatus && cyStatus.kind === 'pending_approval';
+            const isApproved = cyStatus && cyStatus.kind === 'approved';
+            // Blocked for payment if the cycle has a status and isn't 'approved'
+            const isBlocked = isActive || isGrace || isPending;
+            const isSelected = k === clickedKey && !isBlocked; // blocked cycles never pre-checked
             const payDateStr = cyStatus ? cyStatus.payDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }) : '';
             const graceDaysLeft = isGrace ? Math.max(0, Math.ceil((cyStatus.payDate - startOfDay(new Date())) / 86400000)) : 0;
             let badge = '';
@@ -3789,10 +3836,14 @@ function _renderPayModal(row, changedByOther, originalRemaining) {
               subMsg = ' · <span style="color:var(--warm)">Cycle still open — pay from ' + payDateStr + '</span>';
             } else if (isGrace) {
               badge = '<span style="font-size:10px;background:var(--warm-tint);color:var(--warm);padding:1px 6px;border-radius:3px;font-weight:600">🟡 GRACE</span>';
-              subMsg = ' · <span style="color:var(--warm)">Grace period — pay by ' + payDateStr + ' (' + graceDaysLeft + 'd left)</span>';
-            } else if (isLocked) {
-              badge = '<span style="font-size:10px;background:var(--hot-tint);color:var(--hot);padding:1px 6px;border-radius:3px;font-weight:600">🔒 LOCKED</span>';
-              subMsg = ' · <span style="color:var(--hot)">Pay-out past (' + payDateStr + ') — late payment</span>';
+              subMsg = ' · <span style="color:var(--warm)">Grace period — ' + graceDaysLeft + 'd left, then needs treasury approval</span>';
+            } else if (isPending) {
+              badge = '<span style="font-size:10px;background:#f3e8ff;color:var(--brand);padding:1px 6px;border-radius:3px;font-weight:600">⏳ PENDING TREASURY</span>';
+              subMsg = ' · <span style="color:var(--brand)">Awaiting Treasury Manager approval</span>';
+            } else if (isApproved) {
+              const appr = cyStatus.approval;
+              badge = '<span style="font-size:10px;background:var(--success-tint);color:var(--success);padding:1px 6px;border-radius:3px;font-weight:600">✅ APPROVED</span>';
+              if (appr) subMsg = ' · <span style="color:var(--success)">Approved by ' + (appr.byName || appr.by) + '</span>';
             }
             // v31.5.19 — show individual item notes for REF/BON rows
             const items = rr.referrals || [];
@@ -3806,15 +3857,16 @@ function _renderPayModal(row, changedByOther, originalRemaining) {
                 }).join('')}
               </div>` : '';
             return `
-            <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;${isActive?'opacity:0.6;background:var(--surface-3)':''}">
-              <input type="checkbox" class="pay-row-cb" data-i="${i}" ${isSelected?'checked':''} ${isActive?'disabled':''} style="width:16px;height:16px;cursor:${isActive?'not-allowed':'pointer'};margin-top:3px">
+            <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;${isBlocked?'opacity:0.6;background:var(--surface-3)':''}">
+              <input type="checkbox" class="pay-row-cb" data-i="${i}" ${isSelected?'checked':''} ${isBlocked?'disabled':''} style="width:16px;height:16px;cursor:${isBlocked?'not-allowed':'pointer'};margin-top:3px">
               <div>
                 <div style="font-weight:600;font-size:12px"><span class="scheme-pill ${rr.scheme==='OLD'?'scheme-old':(rr.scheme==='REF'?'scheme-ref':(rr.scheme==='BON'?'scheme-bon':(rr.scheme==='DRV'?'scheme-drv':'scheme-new')))}">${rr.scheme}</span> &nbsp; ${rr.cycle}${badge?' &nbsp;'+badge:''}</div>
                 <div style="font-size:10px;color:var(--muted);margin-top:2px">Earned ${money(rr.earned)} · Paid ${money(rr.paid)}${subMsg}</div>
+                <div class="pay-row-err" data-i="${i}" style="display:none;font-size:10px;color:var(--hot);margin-top:3px;font-weight:600">⚠ Amount exceeds remaining balance</div>
                 ${notesList}
               </div>
               <div style="display:flex;align-items:center;gap:4px">
-                ${isActive ? '<span style="font-size:10px;color:var(--muted);font-style:italic">locked</span>' : `<span style="font-size:10px;color:var(--muted)">Pay</span><input type="number" class="pay-row-amt" data-i="${i}" step="0.01" min="0" value="${rr.remaining.toFixed(2)}" style="width:85px;padding:5px 7px;background:var(--surface);border:1px solid var(--border);border-radius:5px;font-family:var(--font-mono);font-size:12px;color:var(--fg);text-align:right">`}
+                ${isBlocked ? '<span style="font-size:10px;color:var(--muted);font-style:italic">locked</span>' : `<span style="font-size:10px;color:var(--muted)">Pay</span><input type="number" class="pay-row-amt" data-i="${i}" step="0.01" min="0" max="${rr.remaining.toFixed(2)}" value="${rr.remaining.toFixed(2)}" style="width:85px;padding:5px 7px;background:var(--surface);border:1px solid var(--border);border-radius:5px;font-family:var(--font-mono);font-size:12px;color:var(--fg);text-align:right">`}
               </div>
             </div>`;
           }).join('')}
@@ -3842,21 +3894,45 @@ function _renderPayModal(row, changedByOther, originalRemaining) {
   $('pay-cancel-btn').addEventListener('click', closePayModal);
   $('pay-backdrop').addEventListener('click', closePayModal);
 
-  // Live total update
+  // Live total update + v31.5.38 per-row overage validation
+  const validateRow = (i) => {
+    const rr = allUnpaid[i];
+    if (!rr) return true;
+    const amtInput = document.querySelector('.pay-row-amt[data-i="' + i + '"]');
+    const errEl = document.querySelector('.pay-row-err[data-i="' + i + '"]');
+    if (!amtInput) return true;
+    const v = Number(amtInput.value) || 0;
+    const over = v > rr.remaining + 0.001;
+    if (errEl) errEl.style.display = over ? 'block' : 'none';
+    amtInput.style.borderColor = over ? 'var(--hot)' : 'var(--border)';
+    return !over;
+  };
   const updateTotal = () => {
     let sum = 0;
+    let anyError = false;
     document.querySelectorAll('.pay-row-cb').forEach(cb => {
+      const i = Number(cb.dataset.i);
       if (cb.checked) {
-        const i = Number(cb.dataset.i);
         const amtInput = document.querySelector('.pay-row-amt[data-i="' + i + '"]');
         sum += Number(amtInput.value) || 0;
+        if (!validateRow(i)) anyError = true;
       }
     });
     const el = $('pay-total-sum');
     if (el) el.textContent = money(sum);
+    // Disable confirm if any selected row exceeds remaining
+    const btn = $('pay-confirm-btn');
+    if (btn) {
+      btn.disabled = anyError;
+      btn.style.opacity = anyError ? '0.5' : '1';
+      btn.style.cursor = anyError ? 'not-allowed' : 'pointer';
+      btn.title = anyError ? 'One or more amounts exceed the remaining balance' : '';
+    }
   };
   document.querySelectorAll('.pay-row-cb').forEach(cb => cb.addEventListener('change', updateTotal));
   document.querySelectorAll('.pay-row-amt').forEach(inp => inp.addEventListener('input', updateTotal));
+  // Initial validation sweep
+  document.querySelectorAll('.pay-row-cb').forEach(cb => { if (cb.checked) validateRow(Number(cb.dataset.i)); });
 
   const confirmBtn = $('pay-confirm-btn');
   if (confirmBtn) confirmBtn.addEventListener('click', async () => {
@@ -3869,16 +3945,29 @@ function _renderPayModal(row, changedByOther, originalRemaining) {
       if (amt > 0) toPay.push({ row: allUnpaid[i], amount: amt });
     });
     if (toPay.length === 0) { alert('Pick at least one cycle and enter an amount.'); return; }
-    // v31.5.17 — final safety: reject any active cycle
-    const activeTry = toPay.filter(p => { const s = cycleStatus(p.row.cycle); return s && s.kind === 'active'; });
-    if (activeTry.length > 0) {
-      const details = activeTry.map(p => {
+    // v31.5.38 — final safety: reject any amount that exceeds remaining (also enforced by the confirm button being disabled)
+    const overRows = toPay.filter(p => p.amount > p.row.remaining + 0.001);
+    if (overRows.length > 0) {
+      alert('✗ Amount exceeds remaining balance:\n\n' + overRows.map(p => '• ' + p.row.cycle + ' (' + p.row.scheme + '): entered $' + p.amount.toFixed(2) + ', remaining $' + p.row.remaining.toFixed(2)).join('\n'));
+      return;
+    }
+    // v31.5.17/v31.5.38 — reject any active / grace / pending-approval cycle
+    const blockedTry = toPay.filter(p => { const s = cycleStatus(p.row.cycle); return s && (s.kind === 'active' || s.kind === 'grace' || s.kind === 'pending_approval'); });
+    if (blockedTry.length > 0) {
+      const details = blockedTry.map(p => {
         const s = cycleStatus(p.row.cycle);
-        const daysLeft = Math.ceil((s.to - startOfDay(new Date())) / 86400000) + 1;
-        const payDate = s.payDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
-        return '• ' + p.row.cycle + ' (' + daysLeft + ' day' + (daysLeft===1?'':'s') + ' left, payable from ' + payDate + ')';
+        if (s.kind === 'active') {
+          const daysLeft = Math.ceil((s.to - startOfDay(new Date())) / 86400000) + 1;
+          const payDate = s.payDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+          return '🟢 ' + p.row.cycle + ' — still open (' + daysLeft + ' day' + (daysLeft===1?'':'s') + ' left, payable from ' + payDate + ')';
+        }
+        if (s.kind === 'grace') {
+          const payDate = s.payDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+          return '🟡 ' + p.row.cycle + ' — in grace period, treasury can approve after ' + payDate;
+        }
+        return '⏳ ' + p.row.cycle + ' — awaiting Treasury Manager approval';
       });
-      alert('🟢 Cannot pay — cycle still open:\n\n' + details.join('\n') + '\n\nWait until the cycle ends.');
+      alert('✗ Cannot pay these cycles:\n\n' + details.join('\n'));
       return;
     }
     const type = $('pay-type').value;
@@ -4192,6 +4281,8 @@ function openReportModal(allRows) {
       const payStr = stStatus.payDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
       if (stStatus.kind === 'active') statusLine = '🟢 Active — cycle not yet ended; pay from ' + payStr;
       else if (stStatus.kind === 'grace') statusLine = '🟡 Grace period — pay by ' + payStr;
+      else if (stStatus.kind === 'pending_approval') statusLine = '⏳ Pending Treasury Manager approval — pay-out was ' + payStr;
+      else if (stStatus.kind === 'approved') statusLine = '✅ Approved for payment' + (stStatus.approval ? ' (by ' + (stStatus.approval.byName || stStatus.approval.by) + ')' : '');
       else statusLine = '🔒 Locked — paid out ' + payStr;
     }
     // Build human-readable period label from multi-select (v31.5.29)
@@ -4920,12 +5011,12 @@ function renderPage5() {
         <span class="pmeta">${state.users.length} user${state.users.length===1?'':'s'}</span>
       </div>
       <div class="data-note">
-        <strong>Roles:</strong> <span class="role-badge role-admin">admin</span> edits everything, <span class="role-badge role-payer">payer</span> can pay but not edit settings, <span class="role-badge role-viewer">viewer</span> is read-only.
+        <strong>Roles:</strong> <span class="role-badge role-admin">admin</span> edits everything, <span class="role-badge role-payer">payer</span> can pay but not edit settings, <span class="role-badge role-treasury" style="background:#f3e8ff;color:#581189">treasury</span> approves cycles + can pay, <span class="role-badge role-viewer">viewer</span> is read-only.
       </div>
       <div style="display:grid;grid-template-columns:1fr 120px 90px 1fr auto;gap:8px;align-items:end">
         <div class="fitem"><div class="flabel">Username</div><input type="text" id="user-new-name" placeholder="e.g. hamza" value="${(state._newUserDraft && state._newUserDraft.name) || ''}" style="width:100%;padding:7px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--fg);font-family:var(--font-mono)"></div>
         <div class="fitem"><div class="flabel">Password</div><input type="text" id="user-new-pw" placeholder="password" value="${(state._newUserDraft && state._newUserDraft.pw) || ''}" style="width:100%;padding:7px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--fg);font-family:var(--font-mono)"></div>
-        <div class="fitem"><div class="flabel">Role</div><select id="user-new-role" style="width:100%;padding:7px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--fg)">${['viewer','payer','admin'].map(r => `<option value="${r}" ${(state._newUserDraft && state._newUserDraft.role)===r?'selected':''}>${r}</option>`).join('')}</select></div>
+        <div class="fitem"><div class="flabel">Role</div><select id="user-new-role" style="width:100%;padding:7px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--fg)">${['viewer','payer','treasury','admin'].map(r => `<option value="${r}" ${(state._newUserDraft && state._newUserDraft.role)===r?'selected':''}>${r}</option>`).join('')}</select></div>
         <div class="fitem"><div class="flabel">Display name</div><input type="text" id="user-new-display" placeholder="e.g. Hamza A." value="${(state._newUserDraft && state._newUserDraft.display) || ''}" style="width:100%;padding:7px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--fg)"></div>
         <button class="pay-btn" id="user-add-btn" style="height:32px">➕ Add user</button>
       </div>
@@ -4944,7 +5035,7 @@ function renderPage5() {
         ${state.users.map(u => {
           const paStr = String(u.pageAccess || '1,2,3,4,5');
           const paSet = new Set(paStr.split(',').map(s => s.trim()));
-          const pageLabels = [['1','📊'],['2','🔀'],['3','🏆'],['4','💰'],['6','💵'],['7','📞'],['8','🏢']];
+          const pageLabels = [['1','📊'],['2','🔀'],['3','🏆'],['4','💰'],['6','💵'],['7','📞'],['8','🏢'],['9','🏦']];
           return `
           <div class="user-row" style="grid-template-columns:1fr 95px 95px 1fr auto;align-items:start;gap:10px;padding:12px">
             <div><div class="uname">${u.username}</div><div class="dname">${u.displayName || '—'}</div>
@@ -4960,7 +5051,7 @@ function renderPage5() {
               </div>
             </div>
             <span class="role-badge role-${u.role}">${u.role}</span>
-            <select class="user-role-change" data-user="${u.username}" style="padding:4px 6px;font-size:11px;background:var(--surface-2);border:1px solid var(--border);border-radius:4px"><option value="viewer" ${u.role==='viewer'?'selected':''}>viewer</option><option value="payer" ${u.role==='payer'?'selected':''}>payer</option><option value="admin" ${u.role==='admin'?'selected':''}>admin</option></select>
+            <select class="user-role-change" data-user="${u.username}" style="padding:4px 6px;font-size:11px;background:var(--surface-2);border:1px solid var(--border);border-radius:4px"><option value="viewer" ${u.role==='viewer'?'selected':''}>viewer</option><option value="payer" ${u.role==='payer'?'selected':''}>payer</option><option value="treasury" ${u.role==='treasury'?'selected':''}>treasury</option><option value="admin" ${u.role==='admin'?'selected':''}>admin</option></select>
             <div style="display:flex;gap:4px;align-items:center">
               <input type="text" class="user-pw-change" data-user="${u.username}" placeholder="new pw…" style="flex:1;padding:4px 8px;font-size:11px;background:var(--surface-2);border:1px solid var(--border);border-radius:4px;color:var(--fg)">
               <button class="pay-history-btn user-pw-save" data-user="${u.username}" style="padding:3px 8px">💾</button>
@@ -5540,9 +5631,11 @@ function renderPage6() {
         const cyStatus = cycleStatus(r.cycle);
         const isActive = cyStatus && cyStatus.kind === 'active';
         const isGrace  = cyStatus && cyStatus.kind === 'grace';
+        const isPending = cyStatus && cyStatus.kind === 'pending_approval';
         let badge = '';
         if (isActive) badge = ' &nbsp;<span style="font-size:10px;background:var(--success-tint);color:var(--success);padding:1px 6px;border-radius:3px;font-weight:600">🟢 ACTIVE — cannot pay</span>';
-        else if (isGrace) badge = ' &nbsp;<span style="font-size:10px;background:var(--warm-tint);color:var(--warm);padding:1px 6px;border-radius:3px;font-weight:600">🟡 GRACE</span>';
+        else if (isGrace) badge = ' &nbsp;<span style="font-size:10px;background:var(--warm-tint);color:var(--warm);padding:1px 6px;border-radius:3px;font-weight:600">🟡 GRACE — cannot pay yet</span>';
+        else if (isPending) badge = ' &nbsp;<span style="font-size:10px;background:#f3e8ff;color:var(--brand);padding:1px 6px;border-radius:3px;font-weight:600">⏳ PENDING TREASURY</span>';
         return `
         <div class="panel" style="margin-bottom:10px;${r.remaining <= 0.001 ? 'opacity:0.6':''}">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
@@ -6298,6 +6391,232 @@ function renderPage8() {
   }
 }
 
+/* ============================================================
+   v31.5.38 — PAGE 9: Treasury Approvals
+   Treasury manager (or admin) approves cycles that are past grace.
+   Once approved, payers can log payments for that cycle.
+   ============================================================ */
+function renderPage9() {
+  const mount = document.getElementById('page-9-content');
+  if (!mount) return;
+  const money = v => '$' + Number(v || 0).toFixed(2);
+  const fmt = v => (v == null ? '—' : v.toLocaleString('en-US'));
+  const canApprove = canApproveCycles();
+
+  // Compute all rows (promoter payments) so we can group by cycle
+  const allRows = computePromoterPayments(state.raw || []);
+
+  // Gather cycle labels seen in data (excluding REF/BON which aren't cycle-gated)
+  const cycleMap = new Map();  // label → { label, status, rows, totalEarned, totalRemaining, promoters }
+  for (const r of allRows) {
+    if (!r.cycle || r.scheme === 'REF' || r.scheme === 'BON') continue;
+    const st = cycleStatus(r.cycle);
+    if (!st) continue;
+    if (!cycleMap.has(r.cycle)) {
+      cycleMap.set(r.cycle, {
+        label: r.cycle,
+        status: st,
+        rows: [],
+        totalEarned: 0,
+        totalRemaining: 0,
+        promoters: new Set()
+      });
+    }
+    const c = cycleMap.get(r.cycle);
+    c.rows.push(r);
+    c.totalEarned += (r.earned || 0);
+    c.totalRemaining += (r.remaining || 0);
+    c.promoters.add(r.promoter);
+  }
+  const allCycles = [...cycleMap.values()].sort((a,b) => (a.label || '').localeCompare(b.label || ''));
+
+  // Buckets
+  const pending = allCycles.filter(c => c.status.kind === 'pending_approval');
+  const approved = allCycles.filter(c => c.status.kind === 'approved');
+  const grace = allCycles.filter(c => c.status.kind === 'grace');
+  const active = allCycles.filter(c => c.status.kind === 'active');
+
+  const totalPending$ = pending.reduce((s,c) => s + c.totalRemaining, 0);
+  const totalApproved$ = approved.reduce((s,c) => s + c.totalEarned, 0);
+
+  // Sort approved by most recently approved first
+  approved.sort((a,b) => {
+    const atA = a.status.approval ? new Date(a.status.approval.at).getTime() : 0;
+    const atB = b.status.approval ? new Date(b.status.approval.at).getTime() : 0;
+    return atB - atA;
+  });
+
+  mount.innerHTML = `
+    ${!canApprove ? `
+      <div style="padding:14px;background:var(--warn-tint);border-left:3px solid var(--warn);border-radius:0 6px 6px 0;margin-bottom:12px;font-size:12px;color:var(--fg-soft)">
+        <strong>⚠ Read-only view.</strong> Only users with <code>treasury</code> or <code>admin</code> role can approve cycles. Contact your admin to get the treasury role if you need approval powers.
+      </div>
+    ` : `
+      <div style="padding:14px;background:linear-gradient(90deg, rgba(88,17,137,0.1), transparent);border-left:3px solid var(--brand);border-radius:0 6px 6px 0;margin-bottom:12px;font-size:12px">
+        Signed in as <strong>${state.session.displayName || state.session.username}</strong> (${state.session.role}). You can approve pending cycles below.
+      </div>
+    `}
+
+    <section class="kpis k4">
+      <div class="kpi"><div class="klabel">⏳ Pending approval</div><div class="kvalue" style="color:var(--brand)">${pending.length}</div><div class="kdelta flat">cycle${pending.length===1?'':'s'} awaiting</div></div>
+      <div class="kpi"><div class="klabel">💰 $ awaiting</div><div class="kvalue" style="color:var(--brand)">${money(totalPending$)}</div><div class="kdelta flat">remaining in pending cycles</div></div>
+      <div class="kpi"><div class="klabel">✅ Approved cycles</div><div class="kvalue" style="color:var(--success)">${approved.length}</div><div class="kdelta flat">payable right now</div></div>
+      <div class="kpi"><div class="klabel">🟡 In grace / active</div><div class="kvalue">${grace.length + active.length}</div><div class="kdelta flat">not yet due for approval</div></div>
+    </section>
+
+    <!-- PENDING APPROVAL -->
+    <section class="row">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>⏳ Pending approval (${pending.length})</h3>
+          <span class="pmeta">These cycles cannot be paid until approved</span>
+        </div>
+        ${pending.length === 0 ? '<div class="empty" style="padding:30px">🎉 No cycles waiting for approval.</div>' : `
+        <div class="tbl-wrap"><table class="tbl">
+            <thead><tr>
+              <th>Cycle</th>
+              <th>Date range</th>
+              <th>Pay-out date</th>
+              <th class="num">Promoters</th>
+              <th class="num">Total earned</th>
+              <th class="num">Still unpaid</th>
+              <th style="text-align:center">Action</th>
+            </tr></thead>
+            <tbody>
+              ${pending.map(c => {
+                const from = c.status.from.toLocaleDateString('en-US', { day:'numeric', month:'short' });
+                const to = c.status.to.toLocaleDateString('en-US', { day:'numeric', month:'short' });
+                const payOut = c.status.payDate.toLocaleDateString('en-US', { day:'numeric', month:'short', year:'numeric' });
+                return `<tr>
+                  <td style="font-weight:700;color:var(--brand);font-family:var(--font-mono)">${c.label}</td>
+                  <td style="font-family:var(--font-mono);font-size:11px">${from} → ${to}</td>
+                  <td style="font-family:var(--font-mono);font-size:11px">${payOut}</td>
+                  <td class="num">${fmt(c.promoters.size)}</td>
+                  <td class="num" style="font-weight:600">${money(c.totalEarned)}</td>
+                  <td class="num" style="color:var(--brand);font-weight:700">${money(c.totalRemaining)}</td>
+                  <td style="text-align:center">
+                    ${canApprove
+                      ? `<button class="pay-btn ta-approve" data-cycle="${c.label}" style="padding:6px 14px;font-weight:600">✓ Approve ${c.label}</button>`
+                      : '<span style="font-size:11px;color:var(--muted);font-style:italic">Treasury only</span>'
+                    }
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+        </table></div>`}
+      </div>
+    </section>
+
+    <!-- APPROVED (audit log) -->
+    <section class="row">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>✅ Approved cycles (${approved.length})</h3>
+          <span class="pmeta">Audit log — who approved what, and when</span>
+        </div>
+        ${approved.length === 0 ? '<div class="empty" style="padding:30px">No approved cycles yet.</div>' : `
+        <div class="tbl-wrap"><table class="tbl">
+            <thead><tr>
+              <th>Cycle</th>
+              <th>Date range</th>
+              <th>Approved by</th>
+              <th>Approved on</th>
+              <th class="num">Promoters</th>
+              <th class="num">Total earned</th>
+              <th class="num">Still unpaid</th>
+            </tr></thead>
+            <tbody>
+              ${approved.map(c => {
+                const from = c.status.from.toLocaleDateString('en-US', { day:'numeric', month:'short' });
+                const to = c.status.to.toLocaleDateString('en-US', { day:'numeric', month:'short' });
+                const appr = c.status.approval || {};
+                const apprDate = appr.at ? new Date(appr.at).toLocaleString('en-US', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+                return `<tr>
+                  <td style="font-weight:700;color:var(--success);font-family:var(--font-mono)">${c.label}</td>
+                  <td style="font-family:var(--font-mono);font-size:11px">${from} → ${to}</td>
+                  <td style="font-weight:600">${appr.byName || appr.by || '—'}</td>
+                  <td style="font-family:var(--font-mono);font-size:11px">${apprDate}</td>
+                  <td class="num">${fmt(c.promoters.size)}</td>
+                  <td class="num">${money(c.totalEarned)}</td>
+                  <td class="num" style="color:${c.totalRemaining>0.001?'var(--brand)':'var(--success)'};font-weight:600">${money(c.totalRemaining)}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+        </table></div>`}
+      </div>
+    </section>
+
+    ${(grace.length + active.length) > 0 ? `
+    <section class="row">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>🔮 Coming up (${grace.length + active.length})</h3>
+          <span class="pmeta">Cycles not yet due for approval</span>
+        </div>
+        <div class="tbl-wrap"><table class="tbl">
+            <thead><tr>
+              <th>Cycle</th>
+              <th>Status</th>
+              <th>Date range</th>
+              <th>Due for approval on</th>
+              <th class="num">Promoters</th>
+              <th class="num">Total earned</th>
+            </tr></thead>
+            <tbody>
+              ${[...grace, ...active].map(c => {
+                const from = c.status.from.toLocaleDateString('en-US', { day:'numeric', month:'short' });
+                const to = c.status.to.toLocaleDateString('en-US', { day:'numeric', month:'short' });
+                const dueDate = c.status.payDate.toLocaleDateString('en-US', { day:'numeric', month:'short', year:'numeric' });
+                const badge = c.status.kind === 'grace' ? '🟡 In grace' : '🟢 Active';
+                return `<tr>
+                  <td style="font-weight:600;font-family:var(--font-mono)">${c.label}</td>
+                  <td>${badge}</td>
+                  <td style="font-family:var(--font-mono);font-size:11px">${from} → ${to}</td>
+                  <td style="font-family:var(--font-mono);font-size:11px">${dueDate}</td>
+                  <td class="num">${fmt(c.promoters.size)}</td>
+                  <td class="num">${money(c.totalEarned)}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+        </table></div>
+      </div>
+    </section>` : ''}
+
+    <div id="ta-status" style="margin-top:12px;font-size:12px;min-height:16px;text-align:center"></div>
+  `;
+
+  // Bind approve buttons
+  if (canApprove) {
+    document.querySelectorAll('.ta-approve').forEach(btn => btn.addEventListener('click', async e => {
+      const cycle = e.currentTarget.dataset.cycle;
+      if (!cycle) return;
+      const cycleData = pending.find(c => c.label === cycle);
+      const totalStr = cycleData ? money(cycleData.totalRemaining) : '';
+      if (!confirm('Approve cycle ' + cycle + ' for payment?\n\nTotal remaining: ' + totalStr + '\n\nOnce approved, payers can log payments immediately.\nYour name will be recorded in the audit log.')) return;
+      btn.disabled = true;
+      btn.textContent = '⏳ Approving…';
+      const statusEl = document.getElementById('ta-status');
+      try {
+        state.payments.cycleApprovals = state.payments.cycleApprovals || {};
+        state.payments.cycleApprovals[cycle] = {
+          by: state.session.username,
+          byName: state.session.displayName || state.session.username,
+          at: new Date().toISOString()
+        };
+        await backendPost({ action: 'save_settings', settings: state.payments });
+        if (statusEl) { statusEl.textContent = '✅ ' + cycle + ' approved. Payers can now pay.'; statusEl.style.color = 'var(--success)'; }
+        setTimeout(() => renderPage9(), 800);
+      } catch (err) {
+        // Roll back local change on failure
+        delete state.payments.cycleApprovals[cycle];
+        btn.disabled = false;
+        btn.textContent = '✓ Approve ' + cycle;
+        if (statusEl) { statusEl.textContent = '✗ Approval failed: ' + err.message; statusEl.style.color = 'var(--hot)'; }
+      }
+    }));
+  }
+}
+
 /* v31.5.28 — All-Hands Report (print to PDF, then upload to Google Drive → open with Slides) */
 function openAllHandsReport(ctx) {
   const money = n => (n==null?'—':n.toLocaleString('en-US'));
@@ -6451,6 +6770,7 @@ function renderActive() {
   else if (state.activePage === '6') renderPage6();
   else if (state.activePage === '7') renderPage7();
   else if (state.activePage === '8') renderPage8();
+  else if (state.activePage === '9') renderPage9();
   const maxUpd = state.raw.reduce((m, r) => {
     const d = r.approval_date || r.registration_date || r.acquisition_date;
     return d && d > m ? d : m;
@@ -6524,6 +6844,8 @@ function hasPageAccess(p) {
   if (!state.session) return false;
   if (state.session.role === 'admin') return true;  // admin sees everything
   if (p === '5') return false;                       // settings is admin-only
+  // v31.5.38 — Treasury Approvals page (9) is admin + treasury only
+  if (p === '9') return state.session.role === 'treasury';
   const access = (state.session.pageAccess || '1,2,3,4,5').split(',').map(x => x.trim());
   return access.indexOf(String(p)) !== -1;
 }
@@ -6537,7 +6859,7 @@ function pageIsLocked(p) {
 function enforcePageAccess() {
   if (!state.session) return;
   if (hasPageAccess(state.activePage)) return;
-  const firstAllowed = ['1','2','3','4','5','6','7','8'].find(p => hasPageAccess(p));
+  const firstAllowed = ['1','2','3','4','5','6','7','8','9'].find(p => hasPageAccess(p));
   if (firstAllowed) {
     state.activePage = firstAllowed;
     document.querySelectorAll('.sidebar-nav .nav-item').forEach(b => b.classList.toggle('active', b.dataset.page === firstAllowed));
