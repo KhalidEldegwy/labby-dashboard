@@ -7,7 +7,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/litepicker.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/plugins/ranges.js"></script>
 <style>
-  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.38 (Treasury Manager approval workflow + overage-reject + treasury role + Page 9) ===== */
+  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.39 (treasury approvals ride on log_payment — no backend change needed) ===== */
   :root {
     --bg: #f6f3fb;
     --surface: #ffffff;
@@ -599,7 +599,7 @@
     </nav>
     <div class="sidebar-footer">
       <div class="live-row"><span class="live-dot"></span>Live from Google Sheet</div>
-      <div class="ver" id="footer-ver">v31.5.38 · Treasury approvals</div>
+      <div class="ver" id="footer-ver">v31.5.39 · Treasury approvals fix</div>
       <div id="footer-user" style="font-size:10px;color:var(--sidebar-muted);margin-top:4px"></div>
     </div>
   </aside>
@@ -2347,8 +2347,28 @@ function cycleStatus(label) {
   return { kind: 'approved', from: r.from, to: r.to, payDate: payDate, approval: cycleApprovalInfo(label) };
 }
 
-// v31.5.38 — Cycle approval helpers
+// v31.5.38 / v31.5.39 — Cycle approval helpers
+// Approvals are stored as SPECIAL ENTRIES in the payment log (scheme='APPROVAL', amount=0).
+// Reason: the Apps Script save_settings action is admin-only, but treasury CAN log payments.
+// Using the payment log avoids any backend change — approvals ride on an action treasury can call.
+function isApprovalLogEntry(p) {
+  return p && (p.scheme === 'APPROVAL' || (p.key && String(p.key).indexOf('approval:') === 0));
+}
+function paymentsOnlyLog() {
+  return (state.paymentLog || []).filter(p => !isApprovalLogEntry(p));
+}
 function cycleApprovalInfo(label) {
+  // Primary source: payment log entries (works for treasury who can't save_settings)
+  let latest = null;
+  (state.paymentLog || []).forEach(p => {
+    if (isApprovalLogEntry(p) && p.cycle === label) {
+      if (!latest || (p.at || '') > (latest.at || '')) latest = p;
+    }
+  });
+  if (latest) {
+    return { by: latest.paidBy || '', byName: latest.paidBy || '', at: latest.at };
+  }
+  // Fallback: settings-based (legacy, admin-only path)
   const a = state.payments && state.payments.cycleApprovals;
   return (a && a[label]) || null;
 }
@@ -2683,11 +2703,11 @@ function computePromoterPayments(data) {
 function paymentKey(row) { return row.promoter + '|' + row.scheme + '|' + row.cycle; }
 function getPaidForRow(row) {
   const key = paymentKey(row);
-  return state.paymentLog.filter(p => p.key === key).reduce((s, p) => s + Number(p.amount || 0), 0);
+  return state.paymentLog.filter(p => p.key === key && !isApprovalLogEntry(p)).reduce((s, p) => s + Number(p.amount || 0), 0);
 }
 function getHistoryForRow(row) {
   const key = paymentKey(row);
-  return state.paymentLog.filter(p => p.key === key).sort((a, b) => a.at.localeCompare(b.at));
+  return state.paymentLog.filter(p => p.key === key && !isApprovalLogEntry(p)).sort((a, b) => a.at.localeCompare(b.at));
 }
 
 function savePaymentLog() {
@@ -3237,7 +3257,7 @@ function renderPage4() {
 
     <section class="kpis" style="grid-template-columns: repeat(5, 1fr);">
       <div class="kpi"><div class="klabel">💵 Total Earned</div><div class="kvalue">${money(totalEarned)}</div><div class="kdelta flat">${rows.length} rows</div></div>
-      <div class="kpi success"><div class="klabel">✓ Total Paid</div><div class="kvalue">${money(totalPaid)}</div><div class="kdelta flat">${state.paymentLog.length} payments</div></div>
+      <div class="kpi success"><div class="klabel">✓ Total Paid</div><div class="kvalue">${money(totalPaid)}</div><div class="kdelta flat">${paymentsOnlyLog().length} payments</div></div>
       <div class="kpi" style="border:2px solid var(--brand);background:var(--brand-tint)"><div class="klabel" style="color:var(--brand)">💰 Total Remaining</div><div class="kvalue" style="color:var(--brand)">${money(totalRemaining)}</div><div class="kdelta flat">to pay out</div></div>
       <div class="kpi warm"><div class="klabel">👥 With balance</div><div class="kvalue">${fmt(withBalance)}</div><div class="kdelta flat">awaiting payment</div></div>
       ${(() => {
@@ -3441,7 +3461,7 @@ function renderPage4() {
       <div class="pay-health">
         <span>✓ ${fmt(data.length)} captains loaded</span>
         <span>✓ ${allRows.length} recruiter-cycle rows calculated</span>
-        <span>${state.paymentLog.length > 0 ? '✓' : '⚠'} ${state.paymentLog.length} payment${state.paymentLog.length===1?'':'s'} logged (localStorage)</span>
+        <span>${paymentsOnlyLog().length > 0 ? '✓' : '⚠'} ${paymentsOnlyLog().length} payment${paymentsOnlyLog().length===1?'':'s'} logged (localStorage)</span>
         <span style="margin-left:auto">Last calc: ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</span>
       </div>
     </section>
@@ -4521,7 +4541,7 @@ function openTodayPaymentReport(allRows) {
     const dayLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
 
     // Payments logged on the selected day (localtime match)
-    const paidToday = (state.paymentLog || []).filter(p => {
+    const paidToday = paymentsOnlyLog().filter(p => {
       if (!p.at) return false;
       return localDateStr(new Date(p.at)) === selectedDate;
     });
@@ -5225,8 +5245,8 @@ function renderPage5() {
         <h3>📊 Status</h3>
       </div>
       <div class="set-grid">
-        <div class="set-card"><div class="label">Logged payments</div><div class="value">${state.paymentLog.length}</div><div class="hint">${state.backend.connected ? 'from Google Sheet' : 'local only'}</div></div>
-        <div class="set-card"><div class="label">Total paid out</div><div class="value">${money(state.paymentLog.reduce((s,x)=>s+Number(x.amount||0),0))}</div></div>
+        <div class="set-card"><div class="label">Logged payments</div><div class="value">${paymentsOnlyLog().length}</div><div class="hint">${state.backend.connected ? 'from Google Sheet' : 'local only'}</div></div>
+        <div class="set-card"><div class="label">Total paid out</div><div class="value">${money(paymentsOnlyLog().reduce((s,x)=>s+Number(x.amount||0),0))}</div></div>
         <div class="set-card"><div class="label">Referrals logged</div><div class="value">${state.referrals.length}</div><div class="hint">${state.referrals.length ? '$' + state.referrals.reduce((s,x)=>s+Number(x.amount||0),0).toFixed(2) + ' total' : '—'}</div></div>
       </div>
       <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
@@ -5557,7 +5577,7 @@ function renderPage6() {
     const refBon = buildReferralRows();
     const combined = [...allPay, ...refBon];
     payRows = combined.filter(r => r.promoter === resolvedName).map(r => {
-      const paid = state.paymentLog
+      const paid = paymentsOnlyLog()
         .filter(l => (l.key || '') === (r.promoter + '|' + r.scheme + '|' + r.cycle))
         .reduce((s, l) => s + Number(l.amount || 0), 0);
       const remaining = Math.max(0, r.earned - paid);
@@ -6585,7 +6605,7 @@ function renderPage9() {
     <div id="ta-status" style="margin-top:12px;font-size:12px;min-height:16px;text-align:center"></div>
   `;
 
-  // Bind approve buttons
+  // Bind approve buttons — v31.5.39: go through log_payment (treasury CAN call this; save_settings is admin-only)
   if (canApprove) {
     document.querySelectorAll('.ta-approve').forEach(btn => btn.addEventListener('click', async e => {
       const cycle = e.currentTarget.dataset.cycle;
@@ -6597,18 +6617,21 @@ function renderPage9() {
       btn.textContent = '⏳ Approving…';
       const statusEl = document.getElementById('ta-status');
       try {
-        state.payments.cycleApprovals = state.payments.cycleApprovals || {};
-        state.payments.cycleApprovals[cycle] = {
-          by: state.session.username,
-          byName: state.session.displayName || state.session.username,
-          at: new Date().toISOString()
+        const approvalEntry = {
+          action: 'log_payment',
+          key: 'approval:' + cycle,
+          promoter: 'TREASURY APPROVAL',
+          scheme: 'APPROVAL',
+          cycle: cycle,
+          amount: 0,
+          type: 'Approval',
+          note: 'Cycle ' + cycle + ' approved for payment by ' + (state.session.displayName || state.session.username)
         };
-        await backendPost({ action: 'save_settings', settings: state.payments });
+        const r = await backendPost(approvalEntry);
+        if (r.log) state.paymentLog = r.log;
         if (statusEl) { statusEl.textContent = '✅ ' + cycle + ' approved. Payers can now pay.'; statusEl.style.color = 'var(--success)'; }
         setTimeout(() => renderPage9(), 800);
       } catch (err) {
-        // Roll back local change on failure
-        delete state.payments.cycleApprovals[cycle];
         btn.disabled = false;
         btn.textContent = '✓ Approve ' + cycle;
         if (statusEl) { statusEl.textContent = '✗ Approval failed: ' + err.message; statusEl.style.color = 'var(--hot)'; }
