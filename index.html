@@ -7,7 +7,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/litepicker.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/plugins/ranges.js"></script>
 <style>
-  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.39 (treasury approvals ride on log_payment — no backend change needed) ===== */
+  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.40 (Supplier page: rejection reasons breakdown + detail modal) ===== */
   :root {
     --bg: #f6f3fb;
     --surface: #ffffff;
@@ -599,7 +599,7 @@
     </nav>
     <div class="sidebar-footer">
       <div class="live-row"><span class="live-dot"></span>Live from Google Sheet</div>
-      <div class="ver" id="footer-ver">v31.5.39 · Treasury approvals fix</div>
+      <div class="ver" id="footer-ver">v31.5.40 · Supplier rejection reasons</div>
       <div id="footer-user" style="font-size:10px;color:var(--sidebar-muted);margin-top:4px"></div>
     </div>
   </aside>
@@ -2235,6 +2235,12 @@ function convertFleetRows(headers, rows) {
   const idx = {};
   headers.forEach((h, i) => { idx[h] = i; });
   const g = n => idx[n];
+  // v31.5.40 — tolerate several possible header spellings for name/phone/rejection
+  const first = (names) => { for (const n of names) { const v = r => r[g(n)]; if (idx[n] !== undefined) return v; } return () => null; };
+  const nameCol  = first(['captain_name','name','full_name','captain_fullname']);
+  const phoneCol = first(['captain_phone','phone','mobile','phone_number']);
+  const rejCol   = first(['rejection_reason','reject_reason','rejected_reason','reason']);
+  const commentCol = first(['comments','comment','notes']);
   return rows
     .filter(r => r[g('captain_phone')] || r[g('captain_id')])
     .map(r => ({
@@ -2242,6 +2248,8 @@ function convertFleetRows(headers, rows) {
       recruiter_name: r[g('recruiter_name')] || '',
       recruiter_id: r[g('recruiter_id')] || '',
       captain_id: r[g('captain_id')] || null,
+      captain_name: (nameCol(r) || '').toString().trim(),
+      phone: (phoneCol(r) || '').toString().trim(),
       acquisition_date: parseDate(r[g('acquisition_date')]),
       vehicle_service: r[g('vehicle_service_name')] || 'Unknown',
       vehicle_type: r[g('vehicle_type')] || 'Unknown',
@@ -2251,6 +2259,8 @@ function convertFleetRows(headers, rows) {
       approval_date: parseDate(r[g('approval_date')]),
       account_status: r[g('account_status')] || '',
       status: r[g('applicant_status_label')] || '',
+      rejection_reason: (rejCol(r) || '').toString().trim(),
+      comments: (commentCol(r) || '').toString().trim(),
       first_trip_date: parseDate(r[g('first_trip_date')]),
       completed_trips: Number(r[g('completed_trips_count')]) || 0,
       trips_within_3d: Number(r[g('completed_trips_within_3_days')]) || 0,
@@ -6222,6 +6232,15 @@ function renderPage8() {
     // Days worked (unique acquisition_date dates across the whole sheet)
     const dates = new Set();
     rows.forEach(r => { if (r.acquisition_date) dates.add(fmtDate(r.acquisition_date)); });
+    // v31.5.40 — rejection reasons breakdown
+    const rejReasons = new Map();  // reason → count
+    const rejectedRows = rows.filter(r => REJECTED.indexOf(r.status) !== -1 || REJECTED.indexOf(r.account_status) !== -1);
+    rejectedRows.forEach(r => {
+      const raw = String(r.rejection_reason || '').trim();
+      const reason = raw || '(no reason given)';
+      rejReasons.set(reason, (rejReasons.get(reason) || 0) + 1);
+    });
+    const rejReasonsSorted = [...rejReasons.entries()].sort((a,b) => b[1] - a[1]);
     return {
       id: s.id,
       name: s.name,
@@ -6231,7 +6250,9 @@ function renderPage8() {
       pending: stats.pending,
       conv: stats.conv,
       daysWorked: dates.size,
-      owed: stats.approved * rate
+      owed: stats.approved * rate,
+      rejectedRows: rejectedRows,
+      rejReasons: rejReasonsSorted  // [[reason, count], ...] sorted desc
     };
   });
 
@@ -6311,6 +6332,95 @@ function renderPage8() {
         </table></div>`}
       </div>
     </section>
+
+    <!-- v31.5.40 — REJECTION REASONS BREAKDOWN -->
+    ${sups.length > 0 ? (() => {
+      // Global aggregate
+      const globalReasons = new Map();
+      perSupplier.forEach(p => {
+        p.rejReasons.forEach(([reason, count]) => {
+          globalReasons.set(reason, (globalReasons.get(reason) || 0) + count);
+        });
+      });
+      const globalSorted = [...globalReasons.entries()].sort((a,b) => b[1] - a[1]);
+      const grandRejected = perSupplier.reduce((s, x) => s + x.rejected, 0);
+      if (grandRejected === 0) return `
+        <section class="row">
+          <div class="panel">
+            <div class="panel-head"><h3>📉 Rejection reasons</h3></div>
+            <div class="empty" style="padding:30px">🎉 No rejected captains from any supplier yet.</div>
+          </div>
+        </section>`;
+      const topN = Math.min(10, globalSorted.length);
+      const globalTop = globalSorted.slice(0, topN);
+      const maxGlobal = globalTop[0] ? globalTop[0][1] : 1;
+      return `
+        <!-- Top rejection reasons overall -->
+        <section class="row">
+          <div class="panel">
+            <div class="panel-head">
+              <h3>📉 Top rejection reasons (all suppliers)</h3>
+              <span class="pmeta">${grandRejected} rejected captain${grandRejected===1?'':'s'} · ${globalSorted.length} distinct reason${globalSorted.length===1?'':'s'}</span>
+            </div>
+            <div style="padding:14px">
+              ${globalTop.map(([reason, count], i) => {
+                const pct = (count / grandRejected * 100).toFixed(1);
+                const barW = (count / maxGlobal * 100).toFixed(1);
+                return `<div style="margin-bottom:8px">
+                  <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+                    <span style="color:var(--fg);font-weight:600"><span style="color:var(--muted);font-family:var(--font-mono);display:inline-block;width:22px">${i+1}.</span> ${reason}</span>
+                    <span style="font-family:var(--font-mono);color:var(--fg-soft)">${count} <span style="color:var(--muted)">(${pct}%)</span></span>
+                  </div>
+                  <div style="height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden">
+                    <div style="height:100%;width:${barW}%;background:linear-gradient(90deg, var(--hot) 0%, #f87171 100%);border-radius:4px"></div>
+                  </div>
+                </div>`;
+              }).join('')}
+              ${globalSorted.length > topN ? `<div style="font-size:11px;color:var(--muted);text-align:center;padding-top:6px">+ ${globalSorted.length - topN} more reason${globalSorted.length - topN === 1 ? '' : 's'}</div>` : ''}
+            </div>
+          </div>
+        </section>
+
+        <!-- Per-supplier rejection reasons -->
+        <section class="row">
+          <div class="panel">
+            <div class="panel-head">
+              <h3>📉 Rejection reasons per supplier</h3>
+              <span class="pmeta">Breakdown of why each supplier's captains were rejected</span>
+            </div>
+            <div style="padding:10px;display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:10px">
+              ${perSupplier.filter(p => p.rejected > 0).map(p => {
+                const topLocal = p.rejReasons.slice(0, 8);
+                const maxLocal = topLocal[0] ? topLocal[0][1] : 1;
+                return `<div style="padding:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                    <div style="font-weight:700;color:var(--brand)">${p.name}</div>
+                    <div style="font-size:11px;color:var(--hot);font-weight:600">${p.rejected} rejected</div>
+                  </div>
+                  ${topLocal.map(([reason, count], i) => {
+                    const pct = (count / p.rejected * 100).toFixed(1);
+                    const barW = (count / maxLocal * 100).toFixed(1);
+                    return `<div style="margin-bottom:6px">
+                      <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px">
+                        <span style="color:var(--fg);font-weight:500">${reason}</span>
+                        <span style="font-family:var(--font-mono);color:var(--muted)">${count} (${pct}%)</span>
+                      </div>
+                      <div style="height:6px;background:var(--surface);border-radius:3px;overflow:hidden">
+                        <div style="height:100%;width:${barW}%;background:var(--hot);border-radius:3px"></div>
+                      </div>
+                    </div>`;
+                  }).join('')}
+                  ${p.rejReasons.length > 8 ? `<div style="font-size:10px;color:var(--muted);text-align:center;padding-top:4px">+ ${p.rejReasons.length - 8} more reason${p.rejReasons.length - 8 === 1 ? '' : 's'}</div>` : ''}
+                  <div style="margin-top:8px;text-align:right">
+                    <button class="btn sup-rej-detail" data-sid="${p.id}" style="height:24px;padding:0 10px;font-size:10px">View all rejected captains →</button>
+                  </div>
+                </div>`;
+              }).join('')}
+              ${perSupplier.filter(p => p.rejected > 0).length === 0 ? '<div class="empty" style="grid-column:1/-1;padding:20px">No rejected captains from any supplier.</div>' : ''}
+            </div>
+          </div>
+        </section>`;
+    })() : ''}
 
     ${isAdmin ? `
     <!-- ADMIN: SUPPLIER SETTINGS -->
@@ -6409,6 +6519,98 @@ function renderPage8() {
       saveSupplierConfig('Removed: ' + s.name);
     }));
   }
+
+  // v31.5.40 — "View all rejected captains" modal per supplier
+  document.querySelectorAll('.sup-rej-detail').forEach(btn => btn.addEventListener('click', e => {
+    const sid = e.currentTarget.dataset.sid;
+    const p = perSupplier.find(x => String(x.id) === String(sid));
+    if (!p) return;
+    openSupplierRejectedModal(p);
+  }));
+}
+
+/* v31.5.40 — modal showing all rejected captains for a supplier */
+function openSupplierRejectedModal(supplier) {
+  const mount = document.getElementById('pay-modal-mount');
+  if (!mount) return;
+  const rows = supplier.rejectedRows || [];
+  // Sort by date desc
+  rows.sort((a,b) => {
+    const da = a.acquisition_date ? a.acquisition_date.getTime() : 0;
+    const db = b.acquisition_date ? b.acquisition_date.getTime() : 0;
+    return db - da;
+  });
+
+  mount.innerHTML = `
+    <div class="pay-modal-backdrop" id="pay-backdrop">
+      <div class="pay-modal" onclick="event.stopPropagation()" style="max-width:860px;max-height:92vh;overflow-y:auto">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <h3 style="margin:0;color:var(--brand)">📉 Rejected captains — ${supplier.name}</h3>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">${rows.length} rejected · supplier ID ${supplier.id}</div>
+          </div>
+          <button class="btn" id="pay-cancel-btn" style="height:30px">✕ Close</button>
+        </div>
+        ${rows.length === 0 ? '<div class="empty" style="padding:30px">No rejected captains.</div>' : `
+        <div class="tbl-wrap" style="max-height:520px;overflow-y:auto">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Captain</th>
+                <th>Captain ID</th>
+                <th>Phone</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Rejection reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map((r, i) => `<tr>
+                <td style="color:var(--muted);font-family:var(--font-mono);font-size:10px">${i+1}</td>
+                <td style="font-weight:600">${r.captain_name || '—'}</td>
+                <td style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">${r.captain_id || '—'}</td>
+                <td style="font-family:var(--font-mono);font-size:11px">${r.phone || '—'}</td>
+                <td style="font-family:var(--font-mono);font-size:11px">${r.acquisition_date ? r.acquisition_date.toLocaleDateString('en-US', { day:'numeric', month:'short', year:'numeric' }) : '—'}</td>
+                <td><span class="pill" style="background:var(--hot-tint);color:var(--hot);padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600">${r.status || r.account_status || '—'}</span></td>
+                <td style="color:var(--fg);font-size:11px">${r.rejection_reason || '<span style="color:var(--muted);font-style:italic">(no reason)</span>'}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:10px;display:flex;justify-content:flex-end;gap:8px">
+          <button class="btn" id="sup-rej-csv" style="background:var(--brand);color:#fff;border-color:var(--brand);height:30px">⬇ Export CSV</button>
+        </div>`}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('pay-cancel-btn').addEventListener('click', closePayModal);
+  document.getElementById('pay-backdrop').addEventListener('click', closePayModal);
+  const csvBtn = document.getElementById('sup-rej-csv');
+  if (csvBtn) csvBtn.addEventListener('click', () => {
+    const csvRows = [['#', 'Supplier', 'Captain', 'Captain ID', 'Phone', 'Date', 'Status', 'Rejection reason']];
+    rows.forEach((r, i) => {
+      csvRows.push([
+        i+1, supplier.name,
+        r.captain_name || '', r.captain_id || '', r.phone || '',
+        r.acquisition_date ? fmtDate(r.acquisition_date) : '',
+        r.status || r.account_status || '',
+        r.rejection_reason || ''
+      ]);
+    });
+    const csv = csvRows.map(row => row.map(c => {
+      const s = String(c == null ? '' : c);
+      return /[,"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'labby-supplier-rejected-' + String(supplier.name).replace(/\s+/g,'_') + '.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
 }
 
 /* ============================================================
