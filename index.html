@@ -7,7 +7,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/litepicker.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/plugins/ranges.js"></script>
 <style>
-  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.40 (Supplier page: rejection reasons breakdown + detail modal) ===== */
+  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.41 (Supplier DAC column + Signups column on Promoter Payments) ===== */
   :root {
     --bg: #f6f3fb;
     --surface: #ffffff;
@@ -599,7 +599,7 @@
     </nav>
     <div class="sidebar-footer">
       <div class="live-row"><span class="live-dot"></span>Live from Google Sheet</div>
-      <div class="ver" id="footer-ver">v31.5.40 · Supplier rejection reasons</div>
+      <div class="ver" id="footer-ver">v31.5.41 · Supplier DAC + Signups column</div>
       <div id="footer-user" style="font-size:10px;color:var(--sidebar-muted);margin-top:4px"></div>
     </div>
   </aside>
@@ -3411,6 +3411,7 @@ function renderPage4() {
           <th>Scheme</th>
           <th>Cycle</th>
           <th class="num" title="Distinct days with at least one signup">Days</th>
+          <th class="num" title="Total captains acquired (all statuses)">Signups</th>
           <th class="num">Qual.</th>
           <th class="num">ECO / PLUS / TAXI</th>
           <th class="num">Commission</th>
@@ -3433,6 +3434,7 @@ function renderPage4() {
             <td><span class="scheme-pill ${r.scheme==='OLD'?'scheme-old':(r.scheme==='REF'?'scheme-ref':(r.scheme==='BON'?'scheme-bon':(r.scheme==='DRV'?'scheme-drv':'scheme-new')))}">${r.scheme}</span></td>
             <td style="font-family:var(--font-mono);font-size:11px">${r.cycle}${cycleRangeLabel(r.cycle) ? `<br><span style="color:var(--faint);font-size:9px">${cycleRangeLabel(r.cycle)}</span>` : ''}</td>
             <td class="num" style="font-family:var(--font-mono);color:var(--fg-soft)">${fmt(r.daysWorked || 0)}</td>
+            <td class="num" style="font-family:var(--font-mono);font-weight:600">${fmt(r.total || 0)}</td>
             <td class="num">${fmt(r.qualified)}</td>
             <td class="num" style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${fmt(r.ecoC)} / ${fmt(r.plusC)} / ${fmt(r.taxiC)}</td>
             <td class="num-money" style="white-space:nowrap">${r.commission > 0 ? money(r.commission) : '<span class="pay-zero">—</span>'}${r.commissionBreakdown ? ' <button class="pay-history-btn" data-brk-idx="'+i+'" title="How is this calculated?" style="padding:1px 5px;font-size:10px;margin-left:2px">🔍</button>' : ''}</td>
@@ -3582,9 +3584,9 @@ function renderPage4() {
 
   const expBtn = $('pay-export-csv');
   if (expBtn) expBtn.addEventListener('click', () => {
-    const csvRows = [['Recruiter','Recruiter ID','Scheme','Cycle','Days worked','Qualified','Approved','ECO','PLUS','TAXI','Commission','Bonus','Activation','Referral cost','Total cost','DAC','Earned','Paid','Remaining','Status']];
+    const csvRows = [['Recruiter','Recruiter ID','Scheme','Cycle','Days worked','Signups','Qualified','Approved','ECO','PLUS','TAXI','Commission','Bonus','Activation','Referral cost','Total cost','DAC','Earned','Paid','Remaining','Status']];
     rows.forEach(r => csvRows.push([
-      r.promoter, r.recruiter_id || '', r.scheme, r.cycle, r.daysWorked || 0, r.qualified, r.approvedCount || 0,
+      r.promoter, r.recruiter_id || '', r.scheme, r.cycle, r.daysWorked || 0, r.total || 0, r.qualified, r.approvedCount || 0,
       r.ecoC, r.plusC, r.taxiC,
       r.commission.toFixed(2), r.bonus.toFixed(2), r.activation.toFixed(2),
       (r.refCost || 0).toFixed(2), (r.dacCost || 0).toFixed(2), r.dac !== null ? r.dac.toFixed(2) : '',
@@ -6272,12 +6274,13 @@ function renderPage8() {
     </div>
 
     <!-- KPI TILES -->
-    <section class="kpis k5">
+    <section class="kpis k6">
       <div class="kpi"><div class="klabel">👥 Total captains</div><div class="kvalue">${fmt(totCaptains)}</div><div class="kdelta flat">across ${sups.length} suppliers</div></div>
       <div class="kpi"><div class="klabel">✅ Approved</div><div class="kvalue" style="color:var(--success)">${fmt(totApproved)}</div><div class="kdelta flat">in APPROVED bucket</div></div>
       <div class="kpi"><div class="klabel">📈 Approval rate</div><div class="kvalue" style="color:${avgConv>=70?'var(--success)':avgConv>=40?'var(--warm)':'var(--hot)'}">${avgConv.toFixed(1)}%</div><div class="kdelta flat">approved ÷ total</div></div>
       <div class="kpi"><div class="klabel">📅 Max days worked</div><div class="kvalue">${fmt(totDays)}</div><div class="kdelta flat">any single supplier</div></div>
       <div class="kpi"><div class="klabel">💰 Total owed</div><div class="kvalue" style="color:var(--brand)">${money(totOwed)}</div><div class="kdelta flat">${totApproved} × $${rate.toFixed(2)}</div></div>
+      <div class="kpi"><div class="klabel">🎯 DAC</div><div class="kvalue" style="color:var(--brand)">${totApproved > 0 ? money(totOwed / totApproved) : '—'}</div><div class="kdelta flat">cost ÷ approved captains</div></div>
     </section>
 
     <!-- PER-SUPPLIER BREAKDOWN -->
@@ -6301,10 +6304,13 @@ function renderPage8() {
                 <th class="num">Approval %</th>
                 <th class="num">Days worked</th>
                 <th class="num">Owed</th>
+                <th class="num" title="Driver Acquisition Cost = Owed ÷ Approved">DAC</th>
               </tr>
             </thead>
             <tbody>
-              ${perSupplier.map((p, i) => `<tr class="rank-row">
+              ${perSupplier.map((p, i) => {
+                const supDac = p.approved > 0 ? (p.owed / p.approved) : null;
+                return `<tr class="rank-row">
                 <td class="rank">${i+1}</td>
                 <td class="name" style="color:var(--brand);font-weight:600">${p.name}</td>
                 <td style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">${p.id || '—'}</td>
@@ -6315,7 +6321,9 @@ function renderPage8() {
                 <td class="num"><span class="${convClass(p.conv)}">${fmtPct(p.conv)}</span></td>
                 <td class="num">${fmt(p.daysWorked)}</td>
                 <td class="num" style="color:var(--brand);font-weight:700">${money(p.owed)}</td>
-              </tr>`).join('')}
+                <td class="num" style="color:var(--brand);font-weight:600">${supDac !== null ? money(supDac) : '<span style="color:var(--faint)">—</span>'}</td>
+              </tr>`;
+              }).join('')}
               <tr class="rank-row" style="background:var(--surface-2);border-top:2px solid var(--brand);font-weight:700">
                 <td></td>
                 <td class="name">TOTAL</td>
@@ -6327,6 +6335,7 @@ function renderPage8() {
                 <td class="num">${avgConv.toFixed(1)}%</td>
                 <td class="num"></td>
                 <td class="num" style="color:var(--brand);font-size:14px">${money(totOwed)}</td>
+                <td class="num" style="color:var(--brand);font-size:14px">${totApproved > 0 ? money(totOwed / totApproved) : '—'}</td>
               </tr>
             </tbody>
         </table></div>`}
