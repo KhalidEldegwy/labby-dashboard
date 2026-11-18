@@ -7,7 +7,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/litepicker.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/plugins/ranges.js"></script>
 <style>
-  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.44 (funnel drop-off arrows between stages on Channel Performance) ===== */
+  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.45 (correct ASInitial semantics: OTP done, waiting for docs) ===== */
   :root {
     --bg: #f6f3fb;
     --surface: #ffffff;
@@ -619,7 +619,7 @@
     </nav>
     <div class="sidebar-footer">
       <div class="live-row"><span class="live-dot"></span>Live from Google Sheet</div>
-      <div class="ver" id="footer-ver">v31.5.44 · Funnel drop-off arrows</div>
+      <div class="ver" id="footer-ver">v31.5.45 · Funnel OTP fix</div>
       <div id="footer-user" style="font-size:10px;color:var(--sidebar-muted);margin-top:4px"></div>
     </div>
   </aside>
@@ -1016,16 +1016,14 @@ function computeKPIs(data, ref) {
    could appear smaller than "Approved" (since approved people are no longer in review).
    Now each stage count is a proper funnel step: non-increasing from top to bottom. */
 
-// Shared stage predicates
-const FUNNEL_INITIAL = 'ASInitial';
+// v31.5.45 — Clarified funnel semantics (per Volt):
+//   Every row in Fleet Data has already passed OTP (that's the entry condition).
+//   ASInitial = passed OTP, still waiting to submit documents.
+//   So the first real step is "Signups" → "Documents Submitted".
 const FUNNEL_REVIEW = ['ASReview','ASCorrection','ASVerification'];
 // A row "reached stage X" if its CURRENT status is at or past X, OR if it has the
 // milestone marker for X (e.g. documents_completed_date for data-extraction stage).
 
-function _reachedPastOTP(r) {
-  // "Past OTP" = not currently stuck at ASInitial. Anyone with any other status got further.
-  return !!r.status && r.status !== FUNNEL_INITIAL;
-}
 function _reachedDocs(r) {
   // Reached the documents stage if the completed date is set, OR the status is at/past review stage,
   // OR already in approved bucket (also means they finished docs).
@@ -1044,23 +1042,21 @@ function _reachedApproved(r) {
 function computeFunnel(data) {
   const total = data.length;
   const stages = [
-    { name: 'Total Signups',         count: total },
-    { name: 'Past OTP',               count: data.filter(_reachedPastOTP).length },
-    { name: 'Documents Submitted',    count: data.filter(_reachedDocs).length },
-    { name: 'Review / Verification',  count: data.filter(_reachedReview).length },
-    { name: 'Approved',               count: data.filter(_reachedApproved).length },
-    { name: 'Rejected (dropped off)', count: data.filter(r => REJECTED.includes(r.status)).length }
+    { name: 'Total Signups (passed OTP)', count: total },
+    { name: 'Documents Submitted',        count: data.filter(_reachedDocs).length },
+    { name: 'Review / Verification',      count: data.filter(_reachedReview).length },
+    { name: 'Approved',                   count: data.filter(_reachedApproved).length },
+    { name: 'Rejected (dropped off)',     count: data.filter(r => REJECTED.includes(r.status)).length }
   ];
   const max = Math.max(...stages.map(s => s.count), 1);
-  const palette = ['#581189', '#3b82f6', '#14b8a6', '#f59e0b', '#10b981', '#f43f5e'];
+  const palette = ['#581189', '#14b8a6', '#f59e0b', '#10b981', '#f43f5e'];
   return stages.map((s, i) => ({ ...s, pctOfTotal: pct(s.count, total), width: s.count / max * 100, color: palette[i % palette.length] }));
 }
 
 function computeChannelFunnel(data, channelColor) {
   const total = data.length;
   const stages = [
-    { name: 'Signups',              count: total },
-    { name: 'Past OTP',             count: data.filter(_reachedPastOTP).length },
+    { name: 'Signups (passed OTP)', count: total },
     { name: 'Documents Submitted',  count: data.filter(_reachedDocs).length },
     { name: 'Review / Verification',count: data.filter(_reachedReview).length },
     { name: 'Approved',             count: data.filter(_reachedApproved).length }
@@ -1077,11 +1073,11 @@ function computeChannelFunnel(data, channelColor) {
    Drop count = previous stage count - current stage count. % is of signups total. */
 function renderFunnelWithDropoffs(stages, totalSignups) {
   // Short description of why people drop between each pair of stages.
+  // v31.5.45 — labels updated to reflect ASInitial = done OTP, waiting for docs.
   const dropLabels = [
     '',  // placeholder for stage 0
-    'stuck at OTP (ASInitial)',
-    'rejected, abandoned, or didn\'t submit documents',
-    'rejected before review',
+    'waiting to submit docs (ASInitial) or dropped off before docs',
+    'rejected or stuck at document review',
     'rejected during review or still in correction'
   ];
   const parts = [];
@@ -1549,7 +1545,7 @@ function renderPage2() {
       </div>
       ${(() => {
         const STATUS_META = [
-          { s: 'ASInitial',       label: 'Initial (OTP)',          bucket: 'pending',  color: '#f59e0b', note: 'Started signup but did not pass OTP verification' },
+          { s: 'ASInitial',       label: 'Initial',                bucket: 'pending',  color: '#f59e0b', note: 'Passed OTP, still waiting to submit documents' },
           { s: 'ASCorrection',    label: 'Correction',             bucket: 'pending',  color: '#f59e0b', note: 'Needs to fix data before review' },
           { s: 'ASVerification',  label: 'Verification',           bucket: 'pending',  color: '#f59e0b', note: 'Being verified by the team' },
           { s: 'ASReview',        label: 'Review',                 bucket: 'pending',  color: '#f59e0b', note: 'Waiting for internal review' },
