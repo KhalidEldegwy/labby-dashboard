@@ -7,7 +7,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/litepicker.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/plugins/ranges.js"></script>
 <style>
-  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.42 (fix funnel: proper cumulative stages, each step = reached at least that stage) ===== */
+  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.43 (Status Breakdown by Channel table on Channel Performance page) ===== */
   :root {
     --bg: #f6f3fb;
     --surface: #ffffff;
@@ -599,7 +599,7 @@
     </nav>
     <div class="sidebar-footer">
       <div class="live-row"><span class="live-dot"></span>Live from Google Sheet</div>
-      <div class="ver" id="footer-ver">v31.5.42 · Funnel fix</div>
+      <div class="ver" id="footer-ver">v31.5.43 · Status breakdown</div>
       <div id="footer-user" style="font-size:10px;color:var(--sidebar-muted);margin-top:4px"></div>
     </div>
   </aside>
@@ -1490,6 +1490,93 @@ function renderPage2() {
           </div>
         </div>
       </div>
+    </section>
+
+    <!-- v31.5.43 — Status Breakdown by Channel -->
+    <section class="panel">
+      <div class="panel-head">
+        <h3>📊 Status Breakdown by Channel</h3>
+        <span class="pmeta">Exact count of each applicant_status for Digital vs Promoter</span>
+      </div>
+      ${(() => {
+        const STATUS_META = [
+          { s: 'ASInitial',       label: 'Initial (OTP)',          bucket: 'pending',  color: '#f59e0b', note: 'Started signup but did not pass OTP verification' },
+          { s: 'ASCorrection',    label: 'Correction',             bucket: 'pending',  color: '#f59e0b', note: 'Needs to fix data before review' },
+          { s: 'ASVerification',  label: 'Verification',           bucket: 'pending',  color: '#f59e0b', note: 'Being verified by the team' },
+          { s: 'ASReview',        label: 'Review',                 bucket: 'pending',  color: '#f59e0b', note: 'Waiting for internal review' },
+          { s: 'ASDataExtracted', label: 'Data Extracted',         bucket: 'approved', color: '#10b981', note: 'Documents processed — approved' },
+          { s: 'ASCreated',       label: 'Account Created',        bucket: 'approved', color: '#10b981', note: 'Account made — ready to drive' },
+          { s: 'NotEngaged',      label: 'Not Engaged',            bucket: 'approved', color: '#10b981', note: 'Account created but not starting trips' },
+          { s: 'ASAccepted',      label: 'Accepted',               bucket: 'approved', color: '#10b981', note: 'Fully accepted into fleet' },
+          { s: 'ASRejected',      label: 'Rejected',               bucket: 'rejected', color: '#ef4444', note: 'Rejected by team' },
+          { s: 'Closed',          label: 'Closed',                 bucket: 'rejected', color: '#ef4444', note: 'File closed' },
+          { s: 'ASAbandoned',     label: 'Abandoned',              bucket: 'rejected', color: '#ef4444', note: 'User abandoned the signup process' }
+        ];
+        // also collect any status in the data we don't know about
+        const knownSet = new Set(STATUS_META.map(x => x.s));
+        const otherStatuses = new Set();
+        data.forEach(r => { if (r.status && !knownSet.has(r.status)) otherStatuses.add(r.status); });
+        const rows = STATUS_META.slice();
+        [...otherStatuses].sort().forEach(s => rows.push({ s, label: s + ' (unknown)', bucket: 'other', color: '#8b7fa3', note: '' }));
+
+        const dTot = digital.length, pTot = promoter.length, allTot = data.length;
+        const perRow = rows.map(r => {
+          const dC = digital.filter(x => x.status === r.s).length;
+          const pC = promoter.filter(x => x.status === r.s).length;
+          const tC = data.filter(x => x.status === r.s).length;
+          return { ...r, dC, pC, tC, dPct: pct(dC, dTot), pPct: pct(pC, pTot), tPct: pct(tC, allTot) };
+        }).filter(r => r.tC > 0);
+
+        // Also count empty/missing status
+        const emptyC = data.filter(r => !r.status).length;
+        if (emptyC > 0) {
+          const dE = digital.filter(x => !x.status).length;
+          const pE = promoter.filter(x => !x.status).length;
+          perRow.push({ s: '', label: '(empty / missing)', bucket: 'other', color: '#8b7fa3', note: 'No applicant_status_label in the sheet', dC: dE, pC: pE, tC: emptyC, dPct: pct(dE, dTot), pPct: pct(pE, pTot), tPct: pct(emptyC, allTot) });
+        }
+
+        const bucketBadge = (b) => {
+          const colors = { pending: '#f59e0b', approved: '#10b981', rejected: '#ef4444', other: '#8b7fa3' };
+          const labels = { pending: 'PENDING', approved: 'APPROVED', rejected: 'REJECTED', other: 'OTHER' };
+          return `<span style="display:inline-block;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:700;font-family:var(--font-mono);background:${colors[b]}22;color:${colors[b]};letter-spacing:0.05em">${labels[b]}</span>`;
+        };
+
+        return `
+          <div class="tbl-wrap"><table class="tbl">
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Bucket</th>
+                <th>Description</th>
+                <th class="num">💻 Digital</th>
+                <th class="num">👤 Promoter</th>
+                <th class="num">Total</th>
+                <th class="num">% of all</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${perRow.map(r => `<tr>
+                <td style="font-family:var(--font-mono);font-size:11px;font-weight:600;color:${r.color}">${r.s || '—'}</td>
+                <td>${bucketBadge(r.bucket)}</td>
+                <td style="font-size:11px;color:var(--fg-soft)">${r.label}${r.note ? '<div style="font-size:10px;color:var(--muted);margin-top:2px">'+r.note+'</div>' : ''}</td>
+                <td class="num" style="color:${dColor}">${fmt(r.dC)} <span style="color:var(--muted);font-size:10px">(${fmtPct(r.dPct)})</span></td>
+                <td class="num" style="color:${pColor}">${fmt(r.pC)} <span style="color:var(--muted);font-size:10px">(${fmtPct(r.pPct)})</span></td>
+                <td class="num" style="font-weight:700">${fmt(r.tC)}</td>
+                <td class="num" style="color:var(--muted)">${fmtPct(r.tPct)}</td>
+              </tr>`).join('')}
+              <tr style="background:var(--surface-2);border-top:2px solid var(--brand);font-weight:700">
+                <td>TOTAL</td>
+                <td></td>
+                <td></td>
+                <td class="num" style="color:${dColor}">${fmt(dTot)}</td>
+                <td class="num" style="color:${pColor}">${fmt(pTot)}</td>
+                <td class="num">${fmt(allTot)}</td>
+                <td class="num">100%</td>
+              </tr>
+            </tbody>
+          </table></div>
+        `;
+      })()}
     </section>
 
     <section class="panel">
