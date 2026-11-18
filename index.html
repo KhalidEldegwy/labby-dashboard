@@ -7,7 +7,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/litepicker.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/plugins/ranges.js"></script>
 <style>
-  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.43 (Status Breakdown by Channel table on Channel Performance page) ===== */
+  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.44 (funnel drop-off arrows between stages on Channel Performance) ===== */
   :root {
     --bg: #f6f3fb;
     --surface: #ffffff;
@@ -247,6 +247,26 @@
   .funnel-row .bar { height: 100%; border-radius: 3px; transition: width 0.3s ease; }
   .funnel-row .count { font-family: var(--font-mono); text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
   .funnel-row .pct { font-family: var(--font-mono); text-align: right; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  /* v31.5.44 — drop-off arrow between stages */
+  .funnel-drop {
+    padding: 4px 10px;
+    margin: 2px 0;
+    font-size: 10.5px;
+    color: var(--hot);
+    background: var(--hot-tint);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+  }
+  .funnel-drop .drop-pct {
+    font-family: var(--font-mono);
+    color: var(--muted);
+    font-weight: 500;
+    margin-left: auto;
+    font-size: 10px;
+  }
 
   /* ===== DONUT ===== */
   .donut-wrap { display: flex; align-items: center; gap: 18px; }
@@ -599,7 +619,7 @@
     </nav>
     <div class="sidebar-footer">
       <div class="live-row"><span class="live-dot"></span>Live from Google Sheet</div>
-      <div class="ver" id="footer-ver">v31.5.43 · Status breakdown</div>
+      <div class="ver" id="footer-ver">v31.5.44 · Funnel drop-off arrows</div>
       <div id="footer-user" style="font-size:10px;color:var(--sidebar-muted);margin-top:4px"></div>
     </div>
   </aside>
@@ -1053,6 +1073,35 @@ function computeChannelFunnel(data, channelColor) {
   });
 }
 
+/* v31.5.44 — Renders a funnel with red drop-off arrows between adjacent stages.
+   Drop count = previous stage count - current stage count. % is of signups total. */
+function renderFunnelWithDropoffs(stages, totalSignups) {
+  // Short description of why people drop between each pair of stages.
+  const dropLabels = [
+    '',  // placeholder for stage 0
+    'stuck at OTP (ASInitial)',
+    'rejected, abandoned, or didn\'t submit documents',
+    'rejected before review',
+    'rejected during review or still in correction'
+  ];
+  const parts = [];
+  for (let i = 0; i < stages.length; i++) {
+    const f = stages[i];
+    parts.push(`<div class="funnel-row"><span class="name">${f.name}</span><div class="bar-wrap"><div class="bar" style="width:${f.width.toFixed(1)}%;background:${f.color}"></div></div><span class="count">${fmt(f.count)}</span><span class="pct" title="% of signups">${fmtPct(f.pctOfTotal)}</span></div>`);
+    // Insert drop-off row before the NEXT stage
+    if (i < stages.length - 1) {
+      const next = stages[i + 1];
+      const drop = Math.max(0, f.count - next.count);
+      if (drop > 0) {
+        const dropPctOfTotal = totalSignups > 0 ? (drop / totalSignups * 100) : 0;
+        const label = dropLabels[i + 1] || 'dropped off';
+        parts.push(`<div class="funnel-drop">↓ ${fmt(drop)} dropped — ${label}<span class="drop-pct">${dropPctOfTotal.toFixed(1)}%</span></div>`);
+      }
+    }
+  }
+  return parts.join('');
+}
+
 /* ---- groupBy ---- */
 function groupBy(data, keyFn) {
   const m = new Map();
@@ -1475,18 +1524,18 @@ function renderPage2() {
     </section>
 
     <section class="panel">
-      <div class="panel-head"><h3>Funnel Comparison — Digital vs Promoter</h3><span class="pmeta">% of each channel's own signups</span></div>
+      <div class="panel-head"><h3>Funnel Comparison — Digital vs Promoter</h3><span class="pmeta">% of each channel's own signups · red arrows show drop-offs</span></div>
       <div class="dual-funnel">
         <div>
           <div class="col-head digital">💻 Digital (Online) <span class="tag digital" style="margin-left:auto">${fmt(digital.length)}</span></div>
           <div class="funnel">
-            ${computeChannelFunnel(digital, dColor).map((f, i) => `<div class="funnel-row"><span class="name">${f.name}</span><div class="bar-wrap"><div class="bar" style="width:${f.width.toFixed(1)}%;background:${f.color}"></div></div><span class="count">${fmt(f.count)}</span><span class="pct" title="% of signups">${fmtPct(f.pctOfTotal)}</span></div>`).join('')}
+            ${renderFunnelWithDropoffs(computeChannelFunnel(digital, dColor), digital.length)}
           </div>
         </div>
         <div>
           <div class="col-head promoter">👤 Promoter (Offline) <span class="tag promoter" style="margin-left:auto">${fmt(promoter.length)}</span></div>
           <div class="funnel">
-            ${computeChannelFunnel(promoter, pColor).map((f, i) => `<div class="funnel-row"><span class="name">${f.name}</span><div class="bar-wrap"><div class="bar" style="width:${f.width.toFixed(1)}%;background:${f.color}"></div></div><span class="count">${fmt(f.count)}</span><span class="pct">${fmtPct(f.pctOfTotal)}</span></div>`).join('')}
+            ${renderFunnelWithDropoffs(computeChannelFunnel(promoter, pColor), promoter.length)}
           </div>
         </div>
       </div>
