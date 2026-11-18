@@ -7,7 +7,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/litepicker.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/plugins/ranges.js"></script>
 <style>
-  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.41 (Supplier DAC column + Signups column on Promoter Payments) ===== */
+  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.42 (fix funnel: proper cumulative stages, each step = reached at least that stage) ===== */
   :root {
     --bg: #f6f3fb;
     --surface: #ffffff;
@@ -599,7 +599,7 @@
     </nav>
     <div class="sidebar-footer">
       <div class="live-row"><span class="live-dot"></span>Live from Google Sheet</div>
-      <div class="ver" id="footer-ver">v31.5.41 · Supplier DAC + Signups column</div>
+      <div class="ver" id="footer-ver">v31.5.42 · Funnel fix</div>
       <div id="footer-user" style="font-size:10px;color:var(--sidebar-muted);margin-top:4px"></div>
     </div>
   </aside>
@@ -991,16 +991,45 @@ function computeKPIs(data, ref) {
   };
 }
 
-/* ---- Funnel ---- */
+/* ---- Funnel ---- v31.5.42 — cumulative stages (each one = reached AT LEAST this stage)
+   Previous version mixed current statuses with achievements, so "Review/Correction"
+   could appear smaller than "Approved" (since approved people are no longer in review).
+   Now each stage count is a proper funnel step: non-increasing from top to bottom. */
+
+// Shared stage predicates
+const FUNNEL_INITIAL = 'ASInitial';
+const FUNNEL_REVIEW = ['ASReview','ASCorrection','ASVerification'];
+// A row "reached stage X" if its CURRENT status is at or past X, OR if it has the
+// milestone marker for X (e.g. documents_completed_date for data-extraction stage).
+
+function _reachedPastOTP(r) {
+  // "Past OTP" = not currently stuck at ASInitial. Anyone with any other status got further.
+  return !!r.status && r.status !== FUNNEL_INITIAL;
+}
+function _reachedDocs(r) {
+  // Reached the documents stage if the completed date is set, OR the status is at/past review stage,
+  // OR already in approved bucket (also means they finished docs).
+  return !!r.documents_completed_date
+    || FUNNEL_REVIEW.includes(r.status)
+    || APPROVED.includes(r.status);
+}
+function _reachedReview(r) {
+  // Reached review stage if currently in review OR already approved (past it).
+  return FUNNEL_REVIEW.includes(r.status) || APPROVED.includes(r.status);
+}
+function _reachedApproved(r) {
+  return APPROVED.includes(r.status);
+}
+
 function computeFunnel(data) {
   const total = data.length;
   const stages = [
-    { name: 'Total Signups', count: total },
-    { name: 'Initial (OTP)', count: data.filter(r => r.status !== 'ASRejected' && r.status !== 'Closed').length },
-    { name: 'Data Extracted', count: data.filter(r => r.documents_completed_date).length },
-    { name: 'Review / Correction', count: data.filter(r => ['ASReview','ASCorrection','ASVerification'].includes(r.status)).length },
-    { name: 'Approved', count: data.filter(r => APPROVED.includes(r.status)).length },
-    { name: 'Rejected', count: data.filter(r => REJECTED.includes(r.status)).length }
+    { name: 'Total Signups',         count: total },
+    { name: 'Past OTP',               count: data.filter(_reachedPastOTP).length },
+    { name: 'Documents Submitted',    count: data.filter(_reachedDocs).length },
+    { name: 'Review / Verification',  count: data.filter(_reachedReview).length },
+    { name: 'Approved',               count: data.filter(_reachedApproved).length },
+    { name: 'Rejected (dropped off)', count: data.filter(r => REJECTED.includes(r.status)).length }
   ];
   const max = Math.max(...stages.map(s => s.count), 1);
   const palette = ['#581189', '#3b82f6', '#14b8a6', '#f59e0b', '#10b981', '#f43f5e'];
@@ -1010,11 +1039,11 @@ function computeFunnel(data) {
 function computeChannelFunnel(data, channelColor) {
   const total = data.length;
   const stages = [
-    { name: 'Signups', count: total },
-    { name: 'Initial', count: data.filter(r => r.status !== 'ASRejected' && r.status !== 'Closed').length },
-    { name: 'Data Extracted', count: data.filter(r => r.documents_completed_date).length },
-    { name: 'Review/Correction', count: data.filter(r => ['ASReview','ASCorrection','ASVerification'].includes(r.status)).length },
-    { name: 'Approved', count: data.filter(r => APPROVED.includes(r.status)).length }
+    { name: 'Signups',              count: total },
+    { name: 'Past OTP',             count: data.filter(_reachedPastOTP).length },
+    { name: 'Documents Submitted',  count: data.filter(_reachedDocs).length },
+    { name: 'Review / Verification',count: data.filter(_reachedReview).length },
+    { name: 'Approved',             count: data.filter(_reachedApproved).length }
   ];
   const max = total || 1;
   return stages.map((s, i, arr) => {
