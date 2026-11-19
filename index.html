@@ -7,7 +7,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/litepicker.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/plugins/ranges.js"></script>
 <style>
-  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.46 (funnel drop-off per-status breakdown) ===== */
+  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.47 (Supplier page: pending captains breakdown + detail modal) ===== */
   :root {
     --bg: #f6f3fb;
     --surface: #ffffff;
@@ -667,7 +667,7 @@
     </nav>
     <div class="sidebar-footer">
       <div class="live-row"><span class="live-dot"></span>Live from Google Sheet</div>
-      <div class="ver" id="footer-ver">v31.5.46 · Drop-off breakdown</div>
+      <div class="ver" id="footer-ver">v31.5.47 · Supplier pending breakdown</div>
       <div id="footer-user" style="font-size:10px;color:var(--sidebar-muted);margin-top:4px"></div>
     </div>
   </aside>
@@ -6500,6 +6500,13 @@ function renderPage8() {
       rejReasons.set(reason, (rejReasons.get(reason) || 0) + 1);
     });
     const rejReasonsSorted = [...rejReasons.entries()].sort((a,b) => b[1] - a[1]);
+    // v31.5.47 — pending statuses breakdown + list
+    const pendingRows = rows.filter(r => PENDING.indexOf(r.status) !== -1);
+    const pendStatuses = new Map();  // status → count
+    pendingRows.forEach(r => {
+      pendStatuses.set(r.status, (pendStatuses.get(r.status) || 0) + 1);
+    });
+    const pendStatusesSorted = [...pendStatuses.entries()].sort((a,b) => b[1] - a[1]);
     return {
       id: s.id,
       name: s.name,
@@ -6511,7 +6518,9 @@ function renderPage8() {
       daysWorked: dates.size,
       owed: stats.approved * rate,
       rejectedRows: rejectedRows,
-      rejReasons: rejReasonsSorted  // [[reason, count], ...] sorted desc
+      rejReasons: rejReasonsSorted,  // [[reason, count], ...] sorted desc
+      pendingRows: pendingRows,
+      pendStatuses: pendStatusesSorted
     };
   });
 
@@ -6688,6 +6697,107 @@ function renderPage8() {
         </section>`;
     })() : ''}
 
+    <!-- v31.5.47 — PENDING CAPTAINS BREAKDOWN -->
+    ${sups.length > 0 ? (() => {
+      const grandPending = perSupplier.reduce((s, x) => s + x.pending, 0);
+      if (grandPending === 0) return `
+        <section class="row">
+          <div class="panel">
+            <div class="panel-head"><h3>⏳ Pending captains</h3></div>
+            <div class="empty" style="padding:30px">🎉 No pending captains from any supplier.</div>
+          </div>
+        </section>`;
+
+      // Status metadata for pending
+      const PEND_META = {
+        'ASInitial':       { label: 'Passed OTP, waiting to submit docs',  color: '#f59e0b', action: 'Follow up — ask them to upload documents' },
+        'ASCorrection':    { label: 'Needs to fix data',                    color: '#f59e0b', action: 'Contact captain to correct the data' },
+        'ASVerification':  { label: 'Being verified',                       color: '#f59e0b', action: 'Verification team action' },
+        'ASReview':        { label: 'Waiting internal review',              color: '#f59e0b', action: 'Review team action' }
+      };
+
+      // Global aggregate
+      const globalPend = new Map();
+      perSupplier.forEach(p => {
+        p.pendStatuses.forEach(([status, count]) => {
+          globalPend.set(status, (globalPend.get(status) || 0) + count);
+        });
+      });
+      const globalPendSorted = [...globalPend.entries()].sort((a,b) => b[1] - a[1]);
+      const maxPend = globalPendSorted[0] ? globalPendSorted[0][1] : 1;
+
+      return `
+        <!-- Top pending overall -->
+        <section class="row">
+          <div class="panel">
+            <div class="panel-head">
+              <h3>⏳ Pending captains — breakdown by status (all suppliers)</h3>
+              <span class="pmeta">${grandPending} pending captain${grandPending===1?'':'s'} · ${globalPendSorted.length} status${globalPendSorted.length===1?'':'es'}</span>
+            </div>
+            <div style="padding:14px">
+              ${globalPendSorted.map(([status, count], i) => {
+                const meta = PEND_META[status] || { label: '(unknown)', color: '#f59e0b', action: '' };
+                const pctStr = (count / grandPending * 100).toFixed(1);
+                const barW = (count / maxPend * 100).toFixed(1);
+                return `<div style="margin-bottom:10px">
+                  <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;align-items:center">
+                    <span style="color:var(--fg);font-weight:600">
+                      <span style="color:var(--muted);font-family:var(--font-mono);display:inline-block;width:22px">${i+1}.</span>
+                      <span style="font-family:var(--font-mono);color:${meta.color}">${status}</span>
+                      <span style="color:var(--muted);font-weight:500;margin-left:6px">— ${meta.label}</span>
+                    </span>
+                    <span style="font-family:var(--font-mono);color:var(--fg-soft)">${count} <span style="color:var(--muted)">(${pctStr}%)</span></span>
+                  </div>
+                  <div style="height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden">
+                    <div style="height:100%;width:${barW}%;background:linear-gradient(90deg, ${meta.color} 0%, #fbbf24 100%);border-radius:4px"></div>
+                  </div>
+                  ${meta.action ? `<div style="font-size:10px;color:var(--muted);margin-top:3px;margin-left:28px">👉 ${meta.action}</div>` : ''}
+                </div>`;
+              }).join('')}
+            </div>
+          </div>
+        </section>
+
+        <!-- Per-supplier pending -->
+        <section class="row">
+          <div class="panel">
+            <div class="panel-head">
+              <h3>⏳ Pending per supplier</h3>
+              <span class="pmeta">Click 'View list' to see the actual captains</span>
+            </div>
+            <div style="padding:10px;display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:10px">
+              ${perSupplier.filter(p => p.pending > 0).map(p => {
+                const topLocal = p.pendStatuses;
+                const maxLocal = topLocal[0] ? topLocal[0][1] : 1;
+                return `<div style="padding:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+                    <div style="font-weight:700;color:var(--brand)">${p.name}</div>
+                    <div style="font-size:11px;color:#f59e0b;font-weight:600">${p.pending} pending</div>
+                  </div>
+                  ${topLocal.map(([status, count]) => {
+                    const meta = PEND_META[status] || { label: '(unknown)', color: '#f59e0b', action: '' };
+                    const pctStr = (count / p.pending * 100).toFixed(1);
+                    const barW = (count / maxLocal * 100).toFixed(1);
+                    return `<div style="margin-bottom:6px">
+                      <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px">
+                        <span style="color:var(--fg);font-weight:500"><span style="font-family:var(--font-mono);color:${meta.color}">${status}</span></span>
+                        <span style="font-family:var(--font-mono);color:var(--muted)">${count} (${pctStr}%)</span>
+                      </div>
+                      <div style="height:6px;background:var(--surface);border-radius:3px;overflow:hidden">
+                        <div style="height:100%;width:${barW}%;background:${meta.color};border-radius:3px"></div>
+                      </div>
+                    </div>`;
+                  }).join('')}
+                  <div style="margin-top:8px;text-align:right">
+                    <button class="btn sup-pend-detail" data-sid="${p.id}" style="height:24px;padding:0 10px;font-size:10px;background:#f59e0b;color:#fff;border-color:#f59e0b">View list — work on them →</button>
+                  </div>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>
+        </section>`;
+    })() : ''}
+
     ${isAdmin ? `
     <!-- ADMIN: SUPPLIER SETTINGS -->
     <section class="row">
@@ -6793,6 +6903,122 @@ function renderPage8() {
     if (!p) return;
     openSupplierRejectedModal(p);
   }));
+
+  // v31.5.47 — "View pending captains" modal per supplier
+  document.querySelectorAll('.sup-pend-detail').forEach(btn => btn.addEventListener('click', e => {
+    const sid = e.currentTarget.dataset.sid;
+    const p = perSupplier.find(x => String(x.id) === String(sid));
+    if (!p) return;
+    openSupplierPendingModal(p);
+  }));
+}
+
+/* v31.5.47 — modal showing all pending captains for a supplier, with status + actions */
+function openSupplierPendingModal(supplier) {
+  const mount = document.getElementById('pay-modal-mount');
+  if (!mount) return;
+  const rows = supplier.pendingRows || [];
+  // Sort by date desc (newest first — most urgent to follow up)
+  rows.sort((a,b) => {
+    const da = a.acquisition_date ? a.acquisition_date.getTime() : 0;
+    const db = b.acquisition_date ? b.acquisition_date.getTime() : 0;
+    return db - da;
+  });
+  const STATUS_LABELS = {
+    'ASInitial': 'Waiting to submit docs',
+    'ASCorrection': 'Needs to fix data',
+    'ASVerification': 'Being verified',
+    'ASReview': 'Waiting review'
+  };
+  const todayMs = Date.now();
+  const daysSince = (d) => {
+    if (!d) return null;
+    return Math.floor((todayMs - d.getTime()) / 86400000);
+  };
+
+  mount.innerHTML = `
+    <div class="pay-modal-backdrop" id="pay-backdrop">
+      <div class="pay-modal" onclick="event.stopPropagation()" style="max-width:960px;max-height:92vh;overflow-y:auto">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <h3 style="margin:0;color:#f59e0b">⏳ Pending captains — ${supplier.name}</h3>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">${rows.length} pending · supplier ID ${supplier.id} · work on them to push to approved</div>
+          </div>
+          <button class="btn" id="pay-cancel-btn" style="height:30px">✕ Close</button>
+        </div>
+        ${rows.length === 0 ? '<div class="empty" style="padding:30px">No pending captains.</div>' : `
+        <div class="tbl-wrap" style="max-height:520px;overflow-y:auto">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Captain</th>
+                <th>Captain ID</th>
+                <th>Phone</th>
+                <th>Signup date</th>
+                <th class="num">Days waiting</th>
+                <th>Status</th>
+                <th>What to do</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map((r, i) => {
+                const days = daysSince(r.acquisition_date);
+                const daysColor = days == null ? 'var(--muted)' : (days >= 14 ? 'var(--hot)' : days >= 7 ? '#f59e0b' : 'var(--fg-soft)');
+                return `<tr>
+                <td style="color:var(--muted);font-family:var(--font-mono);font-size:10px">${i+1}</td>
+                <td style="font-weight:600">${r.captain_name || '—'}</td>
+                <td style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">${r.captain_id || '—'}</td>
+                <td style="font-family:var(--font-mono);font-size:11px">${r.phone || '—'}</td>
+                <td style="font-family:var(--font-mono);font-size:11px">${r.acquisition_date ? r.acquisition_date.toLocaleDateString('en-US', { day:'numeric', month:'short', year:'numeric' }) : '—'}</td>
+                <td class="num" style="color:${daysColor};font-weight:600">${days == null ? '—' : days + 'd'}</td>
+                <td><span class="pill" style="background:rgba(245,158,11,0.15);color:#f59e0b;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600">${r.status || '—'}</span></td>
+                <td style="color:var(--fg);font-size:11px">${STATUS_LABELS[r.status] || '—'}</td>
+              </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:10px;display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <div style="font-size:11px;color:var(--muted)">
+            <span style="color:var(--hot);font-weight:700">●</span> waiting 14+ days ·
+            <span style="color:#f59e0b;font-weight:700">●</span> 7-13 days ·
+            <span style="color:var(--fg-soft);font-weight:700">●</span> &lt; 7 days
+          </div>
+          <button class="btn" id="sup-pend-csv" style="background:var(--brand);color:#fff;border-color:var(--brand);height:30px">⬇ Export CSV</button>
+        </div>`}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('pay-cancel-btn').addEventListener('click', closePayModal);
+  document.getElementById('pay-backdrop').addEventListener('click', closePayModal);
+  const csvBtn = document.getElementById('sup-pend-csv');
+  if (csvBtn) csvBtn.addEventListener('click', () => {
+    const csvRows = [['#', 'Supplier', 'Captain', 'Captain ID', 'Phone', 'Signup date', 'Days waiting', 'Status', 'What to do']];
+    rows.forEach((r, i) => {
+      const days = daysSince(r.acquisition_date);
+      csvRows.push([
+        i+1, supplier.name,
+        r.captain_name || '', r.captain_id || '', r.phone || '',
+        r.acquisition_date ? fmtDate(r.acquisition_date) : '',
+        days == null ? '' : days,
+        r.status || '',
+        STATUS_LABELS[r.status] || ''
+      ]);
+    });
+    const csv = csvRows.map(row => row.map(c => {
+      const s = String(c == null ? '' : c);
+      return /[,"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'labby-supplier-pending-' + String(supplier.name).replace(/\s+/g,'_') + '.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
 }
 
 /* v31.5.40 — modal showing all rejected captains for a supplier */
