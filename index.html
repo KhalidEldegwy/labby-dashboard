@@ -7,7 +7,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/litepicker.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/plugins/ranges.js"></script>
 <style>
-  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.45 (correct ASInitial semantics: OTP done, waiting for docs) ===== */
+  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.46 (funnel drop-off per-status breakdown) ===== */
   :root {
     --bg: #f6f3fb;
     --surface: #ffffff;
@@ -266,6 +266,54 @@
     font-weight: 500;
     margin-left: auto;
     font-size: 10px;
+  }
+  /* v31.5.46 — per-status breakdown under each drop-off row */
+  .funnel-drop-detail {
+    padding: 2px 10px 6px 24px;
+    margin: 0 0 4px;
+    background: rgba(239, 68, 68, 0.04);
+    border-left: 2px solid rgba(239, 68, 68, 0.3);
+    border-radius: 0 4px 4px 0;
+    font-size: 10px;
+    color: var(--fg-soft);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .funnel-drop-detail .fdd-item {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 2px 0;
+  }
+  .funnel-drop-detail .fdd-item .fdd-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .funnel-drop-detail .fdd-item .fdd-status {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--fg);
+  }
+  .funnel-drop-detail .fdd-item .fdd-label {
+    color: var(--muted);
+    flex: 1;
+  }
+  .funnel-drop-detail .fdd-item .fdd-count {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--hot);
+    margin-left: auto;
+  }
+  .funnel-drop-detail .fdd-item .fdd-pct {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+    min-width: 42px;
+    text-align: right;
   }
 
   /* ===== DONUT ===== */
@@ -619,7 +667,7 @@
     </nav>
     <div class="sidebar-footer">
       <div class="live-row"><span class="live-dot"></span>Live from Google Sheet</div>
-      <div class="ver" id="footer-ver">v31.5.45 · Funnel OTP fix</div>
+      <div class="ver" id="footer-ver">v31.5.46 · Drop-off breakdown</div>
       <div id="footer-user" style="font-size:10px;color:var(--sidebar-muted);margin-top:4px"></div>
     </div>
   </aside>
@@ -1070,16 +1118,43 @@ function computeChannelFunnel(data, channelColor) {
 }
 
 /* v31.5.44 — Renders a funnel with red drop-off arrows between adjacent stages.
-   Drop count = previous stage count - current stage count. % is of signups total. */
-function renderFunnelWithDropoffs(stages, totalSignups) {
+   v31.5.46 — adds per-status breakdown under each drop. */
+function renderFunnelWithDropoffs(stages, totalSignups, data) {
   // Short description of why people drop between each pair of stages.
-  // v31.5.45 — labels updated to reflect ASInitial = done OTP, waiting for docs.
+  // Index i means: drop between stage[i-1] and stage[i].
   const dropLabels = [
     '',  // placeholder for stage 0
     'waiting to submit docs (ASInitial) or dropped off before docs',
     'rejected or stuck at document review',
     'rejected during review or still in correction'
   ];
+
+  // Status metadata (for breakdown display)
+  const STATUS_META_BD = {
+    'ASInitial':       { label: 'Passed OTP, waiting for docs',        color: '#f59e0b' },
+    'ASCorrection':    { label: 'Needs to fix data',                    color: '#f59e0b' },
+    'ASVerification':  { label: 'Being verified',                       color: '#f59e0b' },
+    'ASReview':        { label: 'Waiting internal review',              color: '#f59e0b' },
+    'ASDataExtracted': { label: 'Data extracted (approved)',            color: '#10b981' },
+    'ASCreated':       { label: 'Account created (approved)',           color: '#10b981' },
+    'NotEngaged':      { label: 'Not engaged (approved)',               color: '#10b981' },
+    'ASAccepted':      { label: 'Accepted',                             color: '#10b981' },
+    'ASRejected':      { label: 'Rejected by team',                     color: '#ef4444' },
+    'Closed':          { label: 'File closed',                          color: '#ef4444' },
+    'ASAbandoned':     { label: 'Abandoned the signup',                 color: '#ef4444' }
+  };
+
+  // Predicate for which rows are in the "dropped" set between stage i-1 and i
+  // Signups → Documents Submitted  : !_reachedDocs
+  // Documents Submitted → Review   : _reachedDocs && !_reachedReview
+  // Review → Approved              : _reachedReview && !_reachedApproved
+  const dropPredicates = [
+    null,  // no drop before stage 0
+    (r) => !_reachedDocs(r),                            // between Signups and Documents
+    (r) => _reachedDocs(r) && !_reachedReview(r),       // between Documents and Review
+    (r) => _reachedReview(r) && !_reachedApproved(r)    // between Review and Approved
+  ];
+
   const parts = [];
   for (let i = 0; i < stages.length; i++) {
     const f = stages[i];
@@ -1092,6 +1167,27 @@ function renderFunnelWithDropoffs(stages, totalSignups) {
         const dropPctOfTotal = totalSignups > 0 ? (drop / totalSignups * 100) : 0;
         const label = dropLabels[i + 1] || 'dropped off';
         parts.push(`<div class="funnel-drop">↓ ${fmt(drop)} dropped — ${label}<span class="drop-pct">${dropPctOfTotal.toFixed(1)}%</span></div>`);
+
+        // v31.5.46 — append per-status breakdown of the drop
+        const pred = dropPredicates[i + 1];
+        if (pred && data && data.length) {
+          const droppedRows = data.filter(pred);
+          // Group by status
+          const byStatus = new Map();
+          droppedRows.forEach(r => {
+            const s = r.status || '(empty)';
+            byStatus.set(s, (byStatus.get(s) || 0) + 1);
+          });
+          const sortedStatuses = [...byStatus.entries()].sort((a, b) => b[1] - a[1]);
+          if (sortedStatuses.length > 0) {
+            const items = sortedStatuses.map(([status, count]) => {
+              const meta = STATUS_META_BD[status] || { label: '(unknown status)', color: '#8b7fa3' };
+              const pctOfDrop = drop > 0 ? (count / drop * 100) : 0;
+              return `<div class="fdd-item"><span class="fdd-dot" style="background:${meta.color}"></span><span class="fdd-status">${status}</span><span class="fdd-label">${meta.label}</span><span class="fdd-count">${fmt(count)}</span><span class="fdd-pct">${pctOfDrop.toFixed(1)}%</span></div>`;
+            }).join('');
+            parts.push(`<div class="funnel-drop-detail">${items}</div>`);
+          }
+        }
       }
     }
   }
@@ -1525,13 +1621,13 @@ function renderPage2() {
         <div>
           <div class="col-head digital">💻 Digital (Online) <span class="tag digital" style="margin-left:auto">${fmt(digital.length)}</span></div>
           <div class="funnel">
-            ${renderFunnelWithDropoffs(computeChannelFunnel(digital, dColor), digital.length)}
+            ${renderFunnelWithDropoffs(computeChannelFunnel(digital, dColor), digital.length, digital)}
           </div>
         </div>
         <div>
           <div class="col-head promoter">👤 Promoter (Offline) <span class="tag promoter" style="margin-left:auto">${fmt(promoter.length)}</span></div>
           <div class="funnel">
-            ${renderFunnelWithDropoffs(computeChannelFunnel(promoter, pColor), promoter.length)}
+            ${renderFunnelWithDropoffs(computeChannelFunnel(promoter, pColor), promoter.length, promoter)}
           </div>
         </div>
       </div>
