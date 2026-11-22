@@ -774,7 +774,7 @@
    Sidebar nav · 3 pages · Fleet Data CSV
    ============================================================ */
 
-const DATA_SOURCE = 'https://docs.google.com/spreadsheets/d/1zS5bJmdo5o-rJPgREuKVEyi6tRaPXMQMNWDXns-RTgw/gviz/tq?tqx=out:csv&sheet=Fleet%20Data';
+// v31.6 — the source sheet is private now; all data comes through the logged-in backend.
 const AUTO_REFRESH_MS = 120 * 1000;  // v31.1 — slower (every 2 min) to avoid Apps Script quota pressure
 const BACKEND_TIMEOUT_MS = 20 * 1000; // v31.1 — give up slow requests after 20s
 const DEFAULT_BACKEND_URL = 'https://script.google.com/macros/s/AKfycbyUb4TrG883cVRAqkTpwpAHrIVbf4dLesOL_tyn5qgmiAkc6yrTr6CEX4lONnSUvLM8vA/exec'; // v31.5.4 — hardcoded so new users don't paste it
@@ -941,55 +941,45 @@ function parseDate(s) {
   return isNaN(d.getTime()) ? null : d;
 }
 
-/* ---- Load (v30: via authenticated backend; gviz fallback kept for public share mode if ever needed) ---- */
-// v31.5.24 — load Leads tab from the sheet (gviz CSV; sheet must be shared public OR the Leads tab exposed)
+/* ---- Load (v31.6): everything goes through the authenticated backend. ----
+   The source sheet used to be shared "anyone with the link can edit", and its
+   ID was in this public page, so anyone could read and change captain data.
+   It is private now, so the old public gviz reads no longer work. */
+function leadsRowsToObjects(headers, rows) {
+  headers = headers.map(h => String(h || '').trim());
+  const g = n => headers.indexOf(n);
+  return rows.filter(r => r.some(c => String(c || '').trim())).map(r => ({
+    driver_id: String(r[g('Driver ID')] || '').trim(),
+    captain_number: String(r[g('Number captin')] || '').trim(),
+    from: String(r[g('From')] || '').trim(),
+    status_db: String(r[g('Status on Database')] || '').trim(),
+    call_date: r[g('Call Date')] ? parseDate(r[g('Call Date')]) : null,
+    agent: String(r[g('Agent')] || '').trim(),
+    call_status: String(r[g('Call Status')] || '').trim(),
+    vehicle: String(r[g('Vehicle')] || '').trim(),
+    city: String(r[g('City to work')] || '').trim(),
+    followup_date: r[g('date folow up ')] ? parseDate(r[g('date folow up ')]) : (r[g('date folow up')] ? parseDate(r[g('date folow up')]) : null),
+    followup_call: String(r[g('Follow Up Call')] || '').trim(),
+    documents: String(r[g('Documents')] || '').trim(),
+    account_status: String(r[g('Account Status')] || '').trim(),
+    rejection_reason: String(r[g('Rejection Reason')] || '').trim(),
+    comments: String(r[g('Comments')] || '').trim()
+  }));
+}
+
 async function loadLeadsData() {
-  const SHEET_ID = '1zS5bJmdo5o-rJPgREuKVEyi6tRaPXMQMNWDXns-RTgw';
-  const url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&sheet=Leads&_cb=' + Date.now();
-  try {
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const text = await res.text();
-    const rows = parseCSV(text);
-    if (rows.length < 2) return [];
-    const headers = rows[0].map(h => String(h || '').trim());
-    const g = n => headers.indexOf(n);
-    return rows.slice(1).filter(r => r.some(c => String(c||'').trim())).map(r => ({
-      driver_id: String(r[g('Driver ID')] || '').trim(),
-      captain_number: String(r[g('Number captin')] || '').trim(),
-      from: String(r[g('From')] || '').trim(),
-      status_db: String(r[g('Status on Database')] || '').trim(),
-      call_date: r[g('Call Date')] ? parseDate(r[g('Call Date')]) : null,
-      agent: String(r[g('Agent')] || '').trim(),
-      call_status: String(r[g('Call Status')] || '').trim(),
-      vehicle: String(r[g('Vehicle')] || '').trim(),
-      city: String(r[g('City to work')] || '').trim(),
-      followup_date: r[g('date folow up ')] ? parseDate(r[g('date folow up ')]) : (r[g('date folow up')] ? parseDate(r[g('date folow up')]) : null),
-      followup_call: String(r[g('Follow Up Call')] || '').trim(),
-      documents: String(r[g('Documents')] || '').trim(),
-      account_status: String(r[g('Account Status')] || '').trim(),
-      rejection_reason: String(r[g('Rejection Reason')] || '').trim(),
-      comments: String(r[g('Comments')] || '').trim()
-    }));
-  } catch (e) { console.warn('Leads load failed:', e); return []; }
+  if (!hasAuth()) throw new Error('Please log in to see the Leads page.');
+  const r = await backendGet('leads');
+  const block = r.leads || r.data || null;
+  if (block && block.headers && block.rows) return leadsRowsToObjects(block.headers, block.rows);
+  throw new Error('The backend does not serve the Leads tab yet (action "leads"). Ask the developer to add it.');
 }
 
 async function loadData() {
-  // v30: always load through backend so sheet can be private
-  if (hasAuth()) {
-    const r = await backendGet('fleet');
-    if (r.fleet && r.fleet.headers) return convertFleetRows(r.fleet.headers, r.fleet.rows);
-    return [];
-  }
-  // Fallback: public gviz (works if sheet is still public — legacy mode)
-  const url = DATA_SOURCE + (DATA_SOURCE.includes('?') ? '&' : '?') + '_cb=' + Date.now();
-  const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) throw new Error('Failed to load CSV: HTTP ' + res.status);
-  const text = await res.text();
-  const rows = parseCSV(text);
-  if (rows.length < 2) return [];
-  const headers = rows[0];
-  return convertFleetRows(headers, rows.slice(1));
+  if (!hasAuth()) return [];
+  const r = await backendGet('fleet');
+  if (r.fleet && r.fleet.headers) return convertFleetRows(r.fleet.headers, r.fleet.rows);
+  return [];
 }
 
 /* ---- Filters ---- */
