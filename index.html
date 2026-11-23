@@ -7,7 +7,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/litepicker.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/plugins/ranges.js"></script>
 <style>
-  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.48 (Last 5 Days table: Suppliers column) ===== */
+  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.49 (Suppliers page: daily signups table) ===== */
   :root {
     --bg: #f6f3fb;
     --surface: #ffffff;
@@ -667,7 +667,7 @@
     </nav>
     <div class="sidebar-footer">
       <div class="live-row"><span class="live-dot"></span>Live from Google Sheet</div>
-      <div class="ver" id="footer-ver">v31.5.48 · Suppliers in Last 5 Days</div>
+      <div class="ver" id="footer-ver">v31.5.49 · Supplier daily signups</div>
       <div id="footer-user" style="font-size:10px;color:var(--sidebar-muted);margin-top:4px"></div>
     </div>
   </aside>
@@ -6610,6 +6610,12 @@ function renderPage8() {
       </div>
     </section>
 
+    <!-- v31.5.49 — DAILY SIGNUPS PER SUPPLIER -->
+    ${sups.length > 0 ? `<section class="row"><div class="panel">
+      <div class="panel-head"><h3>📅 Daily signups per supplier</h3><span class="pmeta" id="sup-daily-meta">—</span></div>
+      <div id="sup-daily"></div>
+    </div></section>` : ''}
+
     <!-- v31.5.40 — REJECTION REASONS BREAKDOWN -->
     ${sups.length > 0 ? (() => {
       // Global aggregate
@@ -6898,6 +6904,9 @@ function renderPage8() {
     }));
   }
 
+  // v31.5.49 — daily signups table
+  renderSupplierDaily();
+
   // v31.5.40 — "View all rejected captains" modal per supplier
   document.querySelectorAll('.sup-rej-detail').forEach(btn => btn.addEventListener('click', e => {
     const sid = e.currentTarget.dataset.sid;
@@ -6913,6 +6922,123 @@ function renderPage8() {
     if (!p) return;
     openSupplierPendingModal(p);
   }));
+}
+
+/* v31.5.49 — Daily signups per supplier: rows = dates (newest first), cols = suppliers */
+function renderSupplierDaily() {
+  const mount = document.getElementById('sup-daily');
+  if (!mount) return;
+  const sups = supplierList();
+  if (!state.supDaily) state.supDaily = { from: '', to: '', quick: '14d' };
+  const sd = state.supDaily;
+  const today = startOfDay(new Date());
+  const applyQuick = (q) => {
+    sd.quick = q;
+    sd.to = fmtDate(today);
+    if (q === '7d') sd.from = fmtDate(addDays(today, -6));
+    else if (q === '14d') sd.from = fmtDate(addDays(today, -13));
+    else if (q === '30d') sd.from = fmtDate(addDays(today, -29));
+    else if (q === 'mtd') sd.from = fmtDate(new Date(today.getFullYear(), today.getMonth(), 1));
+    else if (q === 'all') {
+      const supRows = (state.raw || []).filter(isSupplier);
+      const minD = supRows.reduce((m, r) => (r.acquisition_date && (!m || r.acquisition_date < m)) ? r.acquisition_date : m, null);
+      sd.from = fmtDate(minD || today);
+    }
+  };
+  if (!sd.from || !sd.to) applyQuick(sd.quick || '14d');
+
+  const fromD = new Date(sd.from + 'T00:00:00');
+  const toD = new Date(sd.to + 'T23:59:59');
+  if (isNaN(fromD) || isNaN(toD) || fromD > toD) { mount.innerHTML = '<div class="empty" style="padding:20px">Invalid date range.</div>'; return; }
+
+  // Match a row to a supplier index (same rule as the breakdown table: ID or exact name)
+  const supIdx = (r) => {
+    const rid = String(r.recruiter_id || '').trim();
+    const rn = String(r.recruiter_name || '').trim();
+    return sups.findIndex(s => (rid && rid === String(s.id).trim()) || (rn && rn === String(s.name).trim()));
+  };
+
+  // Build day buckets
+  const days = [];
+  for (let d = startOfDay(toD); d >= fromD; d = addDays(d, -1)) days.push(d);
+  const key = d => fmtDate(d);
+  const grid = new Map(days.map(d => [key(d), sups.map(() => ({ s: 0, a: 0 }))]));
+  (state.raw || []).forEach(r => {
+    if (!r.acquisition_date || r.acquisition_date < fromD || r.acquisition_date > toD) return;
+    const i = supIdx(r);
+    if (i < 0) return;
+    const cell = grid.get(key(startOfDay(r.acquisition_date)));
+    if (!cell) return;
+    cell[i].s++;
+    if (APPROVED.includes(r.status)) cell[i].a++;
+  });
+
+  const colTot = sups.map(() => ({ s: 0, a: 0 }));
+  let grandS = 0, grandA = 0, activeDays = 0;
+  const rowsHtml = days.map(d => {
+    const cells = grid.get(key(d));
+    let rs = 0, ra = 0;
+    cells.forEach((c, i) => { rs += c.s; ra += c.a; colTot[i].s += c.s; colTot[i].a += c.a; });
+    grandS += rs; grandA += ra; if (rs > 0) activeDays++;
+    const isFri = d.getDay() === 5;
+    return `<tr${rs === 0 ? ' style="opacity:0.55"' : ''}>
+      <td class="name" style="font-family:var(--font-mono);font-size:11px;${isFri ? 'color:var(--brand)' : ''}">${d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+      ${cells.map(c => `<td class="num">${c.s > 0 ? `<strong>${c.s}</strong> <span style="color:var(--success);font-size:10px">(${c.a} ✓)</span>` : '<span style="color:var(--faint)">—</span>'}</td>`).join('')}
+      <td class="num"><strong>${rs}</strong></td>
+      <td class="num" style="color:var(--success)">${ra}</td>
+    </tr>`;
+  }).join('');
+
+  const meta = document.getElementById('sup-daily-meta');
+  if (meta) meta.textContent = `${days.length} days · ${grandS} signups · ${grandA} approved · avg ${(grandS / Math.max(1, days.length)).toFixed(1)}/day`;
+
+  const inp = 'padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--fg);font-family:var(--font-mono)';
+  mount.innerHTML = `
+    <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:10px">
+      <div class="fitem"><div class="flabel">From</div><input type="date" id="sd-from" value="${sd.from}" style="${inp}"></div>
+      <div class="fitem"><div class="flabel">To</div><input type="date" id="sd-to" value="${sd.to}" style="${inp}"></div>
+      <div class="fitem"><div class="flabel">Quick</div><div style="display:flex;gap:3px">
+        ${[['7d','7 days'],['14d','14 days'],['30d','30 days'],['mtd','MTD'],['all','All']].map(([q,l]) => `<button class="btn sd-q" data-q="${q}" style="height:28px;padding:0 9px;font-size:11px;${sd.quick===q?'background:var(--brand);color:#fff;border-color:var(--brand)':''}">${l}</button>`).join('')}
+      </div></div>
+      <div style="flex:1"></div>
+      <button class="btn" id="sd-csv" style="height:30px">⬇ Export CSV</button>
+    </div>
+    <div class="tbl-wrap" style="max-height:520px;overflow-y:auto"><table class="tbl">
+      <thead><tr>
+        <th>Date</th>
+        ${sups.map(s => `<th class="num">${s.name}</th>`).join('')}
+        <th class="num">Total signups</th>
+        <th class="num">Total approved</th>
+      </tr></thead>
+      <tbody>
+        ${rowsHtml}
+        <tr class="total" style="background:var(--surface-2);font-weight:700">
+          <td class="name">TOTAL</td>
+          ${colTot.map(c => `<td class="num">${c.s} <span style="color:var(--success);font-size:10px">(${c.a} ✓)</span></td>`).join('')}
+          <td class="num">${grandS}</td>
+          <td class="num" style="color:var(--success)">${grandA}</td>
+        </tr>
+      </tbody>
+    </table></div>
+    <div style="font-size:10px;color:var(--muted);margin-top:6px">Each cell: signups that day, with approved in green. ${activeDays} of ${days.length} days had at least one signup.</div>
+  `;
+
+  const rerender = () => renderSupplierDaily();
+  document.getElementById('sd-from').addEventListener('change', e => { sd.from = e.target.value; sd.quick = ''; rerender(); });
+  document.getElementById('sd-to').addEventListener('change', e => { sd.to = e.target.value; sd.quick = ''; rerender(); });
+  document.querySelectorAll('.sd-q').forEach(b => b.addEventListener('click', e => { applyQuick(e.currentTarget.dataset.q); rerender(); }));
+  document.getElementById('sd-csv').addEventListener('click', () => {
+    const out = [['Date', ...sups.flatMap(s => [s.name + ' signups', s.name + ' approved']), 'Total signups', 'Total approved']];
+    days.forEach(d => {
+      const cells = grid.get(key(d));
+      out.push([fmtDate(d), ...cells.flatMap(c => [c.s, c.a]), cells.reduce((a, c) => a + c.s, 0), cells.reduce((a, c) => a + c.a, 0)]);
+    });
+    out.push(['TOTAL', ...colTot.flatMap(c => [c.s, c.a]), grandS, grandA]);
+    const csv = out.map(r => r.map(c => { const v = String(c); return /[,"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a'); a.href = url; a.download = 'labby-suppliers-daily-' + sd.from + '_to_' + sd.to + '.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  });
 }
 
 /* v31.5.47 — modal showing all pending captains for a supplier, with status + actions */
