@@ -7,7 +7,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/litepicker.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/plugins/ranges.js"></script>
 <style>
-  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.49 (Suppliers page: daily signups table) ===== */
+  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.50 (Today quick range + date picker opens on first click) ===== */
   :root {
     --bg: #f6f3fb;
     --surface: #ffffff;
@@ -667,7 +667,7 @@
     </nav>
     <div class="sidebar-footer">
       <div class="live-row"><span class="live-dot"></span>Live from Google Sheet</div>
-      <div class="ver" id="footer-ver">v31.5.49 · Supplier daily signups</div>
+      <div class="ver" id="footer-ver">v31.5.50 · Today + date picker fix</div>
       <div id="footer-user" style="font-size:10px;color:var(--sidebar-muted);margin-top:4px"></div>
     </div>
   </aside>
@@ -2074,7 +2074,8 @@ function renderPromoterActivityMatrix() {
   const applyQuick = (q) => {
     const today = new Date();
     pm.to = fmtDate(today);
-    if (q === '7d') pm.from = fmtDate(addDays(today, -6));
+    if (q === 'today') pm.from = fmtDate(today);
+    else if (q === '7d') pm.from = fmtDate(addDays(today, -6));
     else if (q === '14d') pm.from = fmtDate(addDays(today, -13));
     else if (q === '30d') pm.from = fmtDate(addDays(today, -29));
     else if (q === 'mtd') pm.from = fmtDate(new Date(today.getFullYear(), today.getMonth(), 1));
@@ -2158,7 +2159,7 @@ function renderPromoterActivityMatrix() {
         <div class="fitem"><div class="flabel">To</div><input type="date" id="pam-to" value="${pm.to}" style="padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--fg);font-family:var(--font-mono)"></div>
         <div class="fitem"><div class="flabel">Quick</div>
           <div class="pam-quick">
-            ${['7d','14d','30d','mtd','all'].map(q => `<button class="btn pam-q ${pm.quick===q?'on':''}" data-q="${q}">${q==='7d'?'7 days':q==='14d'?'14 days':q==='30d'?'30 days':q==='mtd'?'MTD':'All'}</button>`).join('')}
+            ${['today','7d','14d','30d','mtd','all'].map(q => `<button class="btn pam-q ${pm.quick===q?'on':''}" data-q="${q}">${q==='today'?'Today':q==='7d'?'7 days':q==='14d'?'14 days':q==='30d'?'30 days':q==='mtd'?'MTD':'All'}</button>`).join('')}
           </div>
         </div>
         <div class="fitem"><div class="flabel">Sort by</div>
@@ -6935,7 +6936,8 @@ function renderSupplierDaily() {
   const applyQuick = (q) => {
     sd.quick = q;
     sd.to = fmtDate(today);
-    if (q === '7d') sd.from = fmtDate(addDays(today, -6));
+    if (q === 'today') sd.from = fmtDate(today);
+    else if (q === '7d') sd.from = fmtDate(addDays(today, -6));
     else if (q === '14d') sd.from = fmtDate(addDays(today, -13));
     else if (q === '30d') sd.from = fmtDate(addDays(today, -29));
     else if (q === 'mtd') sd.from = fmtDate(new Date(today.getFullYear(), today.getMonth(), 1));
@@ -6998,7 +7000,7 @@ function renderSupplierDaily() {
       <div class="fitem"><div class="flabel">From</div><input type="date" id="sd-from" value="${sd.from}" style="${inp}"></div>
       <div class="fitem"><div class="flabel">To</div><input type="date" id="sd-to" value="${sd.to}" style="${inp}"></div>
       <div class="fitem"><div class="flabel">Quick</div><div style="display:flex;gap:3px">
-        ${[['7d','7 days'],['14d','14 days'],['30d','30 days'],['mtd','MTD'],['all','All']].map(([q,l]) => `<button class="btn sd-q" data-q="${q}" style="height:28px;padding:0 9px;font-size:11px;${sd.quick===q?'background:var(--brand);color:#fff;border-color:var(--brand)':''}">${l}</button>`).join('')}
+        ${[['today','Today'],['7d','7 days'],['14d','14 days'],['30d','30 days'],['mtd','MTD'],['all','All']].map(([q,l]) => `<button class="btn sd-q" data-q="${q}" style="height:28px;padding:0 9px;font-size:11px;${sd.quick===q?'background:var(--brand);color:#fff;border-color:var(--brand)':''}">${l}</button>`).join('')}
       </div></div>
       <div style="flex:1"></div>
       <button class="btn" id="sd-csv" style="height:30px">⬇ Export CSV</button>
@@ -7853,6 +7855,15 @@ let _payRefreshInFlight = false;
 
 // v31.2 — faster, lighter refresh for Payments page (log + referrals only, not fleet)
 // v31.5.15 — check if the user is actively typing anywhere, so we don't wipe their input
+// v31.5.50 — Chrome only opens the date picker when you hit the small calendar icon;
+// clicking the text part just selects day/month/year. Open the picker on any click.
+document.addEventListener('click', e => {
+  const el = e.target;
+  if (el && el.tagName === 'INPUT' && el.type === 'date' && typeof el.showPicker === 'function') {
+    try { el.showPicker(); } catch (err) { /* picker already open or not allowed */ }
+  }
+});
+
 function isUserTyping() {
   const a = document.activeElement;
   if (!a) return false;
