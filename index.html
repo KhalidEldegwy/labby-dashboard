@@ -7,7 +7,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/litepicker.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/litepicker@2.0.12/dist/plugins/ranges.js"></script>
 <style>
-  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.50 (Today quick range + date picker opens on first click) ===== */
+  /* ===== LABBY DRIVER OPS DASHBOARD — v31.5.51 (highlight 5 promoters on Promoters Performance) ===== */
   :root {
     --bg: #f6f3fb;
     --surface: #ffffff;
@@ -594,6 +594,11 @@
   .watchlist-item .wgap { font-family: var(--font-mono); color: var(--brand); font-weight: 600; }
   .watchlist-item .wgain { font-family: var(--font-mono); color: var(--success); font-size: 11px; }
 
+  /* v31.5.51 — highlighted promoter badge */
+  .hl-promoter { display: inline-block; padding: 1px 8px; border-radius: 4px; background: linear-gradient(90deg, #fef3c7, #fde68a); color: #92400e !important; font-weight: 700; border: 1px solid #f59e0b; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hl-promoter { background: rgba(245,158,11,0.22); color: #fcd34d !important; } }
+  :root[data-theme="dark"] .hl-promoter { background: rgba(245,158,11,0.22); color: #fcd34d !important; }
+
   /* v31.5.35 — Promoter activity matrix */
   .pam-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 10px; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; }
   .pam-quick { display: flex; gap: 3px; }
@@ -667,7 +672,7 @@
     </nav>
     <div class="sidebar-footer">
       <div class="live-row"><span class="live-dot"></span>Live from Google Sheet</div>
-      <div class="ver" id="footer-ver">v31.5.50 · Today + date picker fix</div>
+      <div class="ver" id="footer-ver">v31.5.51 · Highlighted promoters</div>
       <div id="footer-user" style="font-size:10px;color:var(--sidebar-muted);margin-top:4px"></div>
     </div>
   </aside>
@@ -905,6 +910,16 @@ function isSupplierName(name) {
   const want = String(name).trim();
   return supplierList().some(s => String(s.name).trim() === want);
 }
+/* v31.5.51 — Highlighted promoters (shown with a gold star badge on Promoters Performance) */
+const HIGHLIGHT_PROMOTERS = ['نور الدين الياسين','حسام الدين الجاسم','معلا قنص','غدير ملحم','جواد كرباج'];
+const _normName = n => String(n || '').replace(/\s+/g, ' ').trim();
+const _hlSet = new Set(HIGHLIGHT_PROMOTERS.map(_normName));
+function isHighlightedPromoter(name) { return _hlSet.has(_normName(name)); }
+function hlName(name) {
+  if (!isHighlightedPromoter(name)) return name;
+  return `<span class="hl-promoter" title="Highlighted promoter">⭐ ${name}</span>`;
+}
+
 function isSupplier(r) {
   if (!r) return false;
   return isSupplierId(r.recruiter_id) || isSupplierName(r.recruiter_name);
@@ -1981,7 +1996,7 @@ function renderPage3() {
           const rankCls = i < 3 ? ` rank-${i+1}` : '';
           return `<div class="leaderboard-row${rankCls}">
             <div class="leaderboard-rank${medalCls}">${medal}</div>
-            <div class="leaderboard-name">${p.name}</div>
+            <div class="leaderboard-name">${hlName(p.name)}</div>
             <div class="leaderboard-stat"><div class="lbl">Signups</div><div class="val">${fmt(p.total)}</div></div>
             <div class="leaderboard-stat"><div class="lbl">Created</div><div class="val" style="color:var(--success)">${fmt(p.approved)}</div></div>
             <div class="leaderboard-stat"><div class="lbl">Rejected</div><div class="val" style="color:var(--rose)">${fmt(p.rejected)}</div></div>
@@ -2011,7 +2026,7 @@ function renderPage3() {
         <tbody>
           ${allRows.map((p, i) => `<tr class="rank-row">
             <td class="rank">${i+1}</td>
-            <td class="name" style="color:${pColor}">${p.name}</td>
+            <td class="name" style="color:${pColor}">${hlName(p.name)}</td>
             <td style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">${p.recruiter_id || '—'}</td>
             <td class="num">${fmt(p.total)}</td>
             <td class="num" style="color:var(--success);font-weight:600">${fmt(p.approved)}</td>
@@ -2198,7 +2213,7 @@ function renderPromoterActivityMatrix() {
                 <td class="pam-name-cell">
                   <div class="pam-pname">
                     ${silent ? '<span title="No signups in this range" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#dc2626;margin-right:6px;vertical-align:middle"></span>' : '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--success);margin-right:6px;vertical-align:middle"></span>'}
-                    ${p.name}
+                    ${hlName(p.name)}
                   </div>
                   ${p.recruiter_id ? `<div class="pam-prid">ID: ${p.recruiter_id}</div>` : ''}
                 </td>
